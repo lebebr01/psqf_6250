@@ -1,0 +1,90 @@
+---
+title:  "R Basics"
+author: "Brandon LeBeau"
+date:   "January 23, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+In an attempt to get you "doing things" in R quickly, I've omitted a lot of discussion surrounding internal R workings. R is an object oriented language, this is much different than many other software languages. 
+
+## R works as a calculator
+R can be used as a calculator to do any type of addition, subtraction, multiplication, or division (among other things).
+
+```{r calc}
+1 + 2 - 3
+5 * 7
+2/1
+sqrt(4)
+2^2
+```
+
+Being an object oriented system, values can directly saved within an object to be used later. As an example:
+
+```{r object}
+x <- 1 + 3
+x
+```
+
+This can then be used later in other calculations:
+
+```{r object2}
+x * 3
+```
+
+This simplistic example is a bit too simple to show all the benefits of this approach, but will become more apparent when we start reading in data and doing more complicated data munging type tasks.
+
+### Naming conventions
+This is a topic in which you will not get a single answer, but rather a different answer for everyone you ask. I prefer something called **snake_case** using underscores to separate words in an object. Others use **titleCase** as a way to distinguish words others yet use **period.to.separate** words in object names.
+
+The most important thing is to be consistent. Pick a convention that works for you and stick with it through out. Avoiding this **Mixed.TypeOf_conventions** at all costs.
+
+## R is case sensitive
+This can cause problems and make debugging a bit more difficult. Be careful with typos and with case. Here is an example:
+```{r case}
+case_sensitive <- 10
+Case_sensitive
+```
+
+## Functions
+We have already been using functions when working through creating graphics with R. A function consists of at least two parts, the *function name* and the *arguments* as follows: `function_name(arg1 = num, arg2 = num)`. The arguments are always inside of parentheses, take on some value, and are always named. To call a function, use the `function_name` followed by parentheses with the arguments inside the parentheses. For example, using the `rnorm` function to generate values from a random normal distribution:
+
+```{r rnorm}
+set.seed(1)
+rnorm(n = 10, mean = 0, sd = 1)
+```
+
+Notice I called the arguments by name directly, this is good practice, however, this code will generate the same values (the values are the same because I'm using `set.seed` here):
+
+```{r rnorm2}
+set.seed(1)
+rnorm(10, 0, 1)
+```
+
+The key when arguments are not called via their names is the order of the arguments. Look at `?rnorm` to see that the first three arguments are indeed `n`, `mean`, and `sd`. When you name arguments, they can be specified in any order (generally bad practice).
+
+```{r rnorm3}
+set.seed(1)
+rnorm(sd = 1, n = 10, mean = 0)
+```
+
+You can save this result to an object to be used later.
+
+```{r rnorm4}
+set.seed(1)
+norm_values <- rnorm(n = 10, mean = 0, sd = 1)
+```
+
+Notice the result is no longer printed to the screen, but rather is saved to the object `norm_values`. To see the result, you could just type `norm_values` in the console.
+
+## Errors
+Lastly, I want to discuss errors. Errors are going to happen. Even the best programmers encounter errors that they did not anticipate and debugging needs to happen. If you encounter an error I recommend doing the following few things first:
+
+1. Use `?function_name` to explore the details of the function. The examples at the bottom of every R help page can be especially helpful.
+2. If this does not help, copy and paste the error and search on the internet. Chances are someone else has had this error and has asked how to fix it. This is how I fix most errors I am unable to figure out with the R help.
+3. If these two steps still do not help, feel free to email me, but take the time to do steps 1 and 2. If you do email me, please include the following things:
+
+    - The error message directly given from R
+    - A reproducible example of the code. The reproducible example is one in which I can run the code directly with no modifications. Without this, it is much more difficult if not impossible for me to help without asking for more information.
+

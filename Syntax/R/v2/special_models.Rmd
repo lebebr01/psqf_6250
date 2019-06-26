@@ -1,0 +1,147 @@
+---
+title:  "Special Modeling Topics"
+author: "Brandon LeBeau"
+date:   "March 6, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+I want to spend a little bit of time talking about ways to model non-linear trends within a linear model as well as show an example of conducting a logistic regression within R using the `glm` function. This set of notes will use the following packages:
+
+```{r packages, message = FALSE}
+library(modelr)
+library(broom)
+library(forcats)
+library(tidyverse)
+```
+
+## Modeling non-linear trends
+
+Modeling non-linear trends can be important and a great way to increase variance explained. There are many ways to model non-linear trends, including non-linear models, but I am going to focus on a linear modeling framework to include non-linear trends by adding quadratic terms.
+
+These types of models are flexible and relatively easy to interpret, however have the drawback that prediction outside of the data at hand (extrapolation) can be problematic. Using the final model from the model assumptions lecture, lets see if we can improve model fit and the trend in the residuals by adding some non-linearity in the form of quadratic terms.
+
+If you recall, here is the model that was used last time.
+
+```{r model_prep}
+heights2 <- heights %>%
+  mutate(
+    marital_comb = fct_recode(marital,
+                              'Other' = 'separated',
+                              'Other' = 'widowed'
+    ),
+    income2 = ifelse(income == 0, .001, income),
+    height2 = height - mean(height, na.rm = TRUE),
+    education2 = education - mean(education, na.rm = TRUE),
+    weight2 = weight - mean(weight, na.rm = TRUE),
+    log_income = log(income2)
+  )
+afqt_alt <- lm(afqt ~ marital_comb + height2 + education2 + 
+                 log_income + weight2, data = heights2)
+summary(afqt_alt)
+```
+
+Let's see if there are non-linear trends in the height, weight, or income variables. I am going to add these by specifically creating additional variables and using these as new predictors. You could also create these by using the insulate function `I()` to do the operation within the model syntax.
+
+```{r quadratic_model}
+heights2 <- heights2 %>%
+  mutate(
+    height2_quad = height2 ^ 2,
+    weight2_quad = weight2 ^ 2, 
+    log_income_quad = log_income ^ 2,
+    education2_quad = education2 ^ 2
+  )
+afqt_alt <- lm(afqt ~ marital_comb + height2 + education2 + 
+                 log_income + weight2 + education2_quad +
+                 height2_quad + weight2_quad + log_income_quad, 
+               data = heights2)
+summary(afqt_alt)
+```
+
+Alternatively, this model could look like:
+```{r model2}
+afqt_alt <- lm(afqt ~ marital_comb + height2 + education2 + 
+                 log_income + weight2 + I(education2^2) +
+                 I(height2^2) + I(weight2^2) + I(log_income^2), 
+               data = heights2)
+summary(afqt_alt)
+```
+
+
+
+Let's see if this improved our model fit.
+
+```{r assumpt}
+plot(afqt_alt)
+```
+
+We could also attempt to convert the dependent variable (in a percentile metric) to a z-score.
+
+```{r z}
+heights2 <- heights2 %>%
+  mutate(
+    afqt2 = ifelse(afqt == 0, .00001, ifelse(afqt == 100, 99.9999999, afqt)),
+    afqt3 = ifelse(afqt %in% c(0, 100), NA, afqt),
+    afqt_z = qnorm(afqt2/100),
+    afqt_z3 = qnorm(afqt3/100)
+  )
+afqt_alt2 <- lm(afqt_z3 ~ marital_comb + height2 + education2 + 
+                 log_income + weight2 + education2_quad +
+                 height2_quad + weight2_quad + log_income_quad, 
+               data = heights2)
+summary(afqt_alt2)
+```
+
+```{r asumpt2}
+plot(afqt_alt2)
+```
+
+## `glm` function
+The `glm` function behaves much like the `lm` function. The only major difference in model logistics is that we will now need to specify a family argument. This family argument will depend on the type of model being fitted. We are going to perform a logistic regression, therefore this family will be binomial.
+
+The data we will use is from Kaggle and is data from Titanic, more specifically the data has characteristics on the passengers and whether they survived the shipwreck or not. You can get a sense of the variables from this website: <https://www.kaggle.com/c/titanic/data>.
+
+
+```{r setup, echo = FALSE}
+knitr::opts_knit$set(root.dir = "C:/Users/bleb/University of Iowa/OneDrive - University of Iowa/Courses/Uiowa/Comp")
+
+```
+
+```{r titanic_data}
+titanic <- read_csv('Data/titanic.csv')
+titanic
+```
+
+Suppose we were interested in fitting a model that predicted whether a passenger survived or not. Using `lm` is not appropriate as the dependent variable is not continuous, rather it is dichotomous. Using logistic regression is more appropriate here.
+
+```{r glm_survive}
+surv_mod <- glm(Survived ~ factor(Pclass) + Fare + Sex + Age, 
+                data = titanic, 
+                family = binomial)
+summary(surv_mod)
+```
+
+It is common to interpret these in terms of probability, we can do this with the following bit of code:
+
+```{r logistic_probability}
+prob_mod <- titanic %>%
+  select(Survived, Pclass, Fare, Sex, Age) %>%
+  na.omit() %>%
+  mutate(
+    probability = predict(surv_mod, type = 'response')
+  )
+prob_mod
+```
+
+We could now plot these probabilities to explore the effects.
+
+```{r prob_plot}
+ggplot(prob_mod, aes(Age, probability, color = Sex, linetype = Sex)) + 
+  geom_line(size = 1) + 
+  facet_grid(. ~ Pclass) + 
+  theme_bw() + 
+  xlab("Age") + 
+  ylab("Probability of Survival")
+```
+

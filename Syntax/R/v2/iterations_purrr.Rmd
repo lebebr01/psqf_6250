@@ -1,0 +1,20 @@
+---
+title:  "Iteration"
+author: "Brandon LeBeau"
+date:   ""
+output:
+  html_notebook: default
+  html_document: default
+---
+
+## First For Loop
+
+
+## Introducing `purrr`
+
+
+## More than one Argument
+
+
+## Passing Multiple Arguments
+

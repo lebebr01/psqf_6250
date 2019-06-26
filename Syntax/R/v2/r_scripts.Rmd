@@ -1,0 +1,17 @@
+---
+title:  "R Scripts"
+author: "Brandon LeBeau"
+date:   "January 30, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+I want to talk very briefly about R scripts. You may have been using these already within your workflow for this course, but these are best practice instead of simply running code in the console. Creating R scripts are a crucial step to ensure the data analyses are reproducible, the script will act as a log of all the things that are done to the data to go from data import to any outputs (model results, tables, figures, etc.). 
+
+To create an R script with RStudio, the short cut is CTRL/CMD + SHIFT + N. You can also create a new script by going to File > New File > R Script. Both of these commands will open up a blank script window. 
+
+In this script window, I would recommend loading any R packages first at the top of the file. Then proceed with the analysis. Commands can be sent to the console using CRTL/CMD + ENTER. By default RStudio will run any commands that span more than one line with a single CRTL/CMD + ENTER call. 
+
+For more details about R Scripts, the R for Data Science text has detail with screenshots in [Chapter 6](http://r4ds.had.co.nz/workflow-scripts.html). I recommend trying to create a simple script and sending these commands from the script to the console to be run with R.
+

@@ -1,0 +1,363 @@
+---
+title:  "Exploratory Data Analysis with R"
+author: "Brandon LeBeau"
+date:   "February 6, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Exploratory data analysis (EDA) is an exteremely important step in exploring and understanding your data. In addition, EDA does not suffer from problems with inferential statistics related to multiple (correlated) models on the same data. Instead, EDA is a great way to visualize, summarize, and prod your data without any consequences.
+
+For this set of notes, we are going to use the following packages:
+```{r packages, message = FALSE}
+library(nycflights13)
+library(tidyverse)
+```
+
+We will use a few different data sets, but the one we are going to start with is the `flights` data from the `nycflights13` package. Below is the first 10 rows of the data.
+
+```{r flights_data}
+flights
+```
+
+This data contains information on all flights that departed from the three airports in NYC in 2013. As you can see, the data has a total of `r nrow(flights)` rows and `r ncol(flights)`. For additional information use `?flights`.
+
+## Exploratory Data Analysis
+The general process for proceeding with exploratory data analysis as summarized in the R for Data Science text are: 
+
+1. Ask questions about your data
+2. Search for answers
+3. Refine or ask new questions about the data.
+
+There are no bad questions when performing EDA, but some common questions worth exploring are:
+
+- Missing Data
+- Variation
+- Covariation
+- Rare cases
+- Common cases
+- Distributions
+
+### Missing Data
+A first step in exploring the data is to explore if there are any missing data present in the data (likely). This is not an easy step, but determining the amount of missing data and, if possible, why these values are missing are important first steps. One quick way to get a view of this information for the entire data is to use the `summary` command. An example is given with the `flights` data below.
+
+```{r summary_flights}
+summary(flights)
+```
+
+This summary can be a bit difficult to digest at first, but can give some useful insight into the variables, including the amount of missing data for each variable.
+
+You can dive into looking at specific rows that are missing with the `filter` command and the `is.na` function. An example pulling out rows with a missing dep_time values is illustrated:
+
+```{r missing_deptime}
+filter(flights, is.na(dep_time))
+```
+
+We can also build more complex operations to look at data that is missing for one variable, but not another. For instance, if you look at the summary information above, you may notice there are more missing values for the arr_delay variable compared to the arr_time variable. To look at these values you can use the following command:
+
+```{r missing_time_notdelay}
+filter(flights, is.na(arr_delay) & !is.na(arr_time))
+```
+
+This may actually be a data error, as there is an arr_time value, a scheduled_arr_time value, but no arr_delay value. This could then be calculated manually to reduce the number of missing values with this variable.
+
+#### Viewing missing data graphically
+It may be useful to view missing data graphically. This may be useful to see if there are specific trends in the data in relation to the missing values. A few ways to plot these data may be useful.
+
+First, it is always a good rule to explore missing data in relation to other variables in the data. If there is evidence that another variable is influencing whether a value is missing, additional statistical controls are needed to adjust for these concerns. 
+
+For example, we could explore if the scheduled arrival time is related to whether the actual arrival flight time is missing.
+
+```{r arrival_missing, message = FALSE}
+flights %>%
+  mutate(
+    miss_arrival = is.na(arr_time)
+  ) %>%
+  ggplot(mapping = aes(sched_arr_time)) + 
+  geom_freqpoly(aes(color = miss_arrival)) + 
+  theme_bw()
+```
+
+Notice that the count metric masks much of what is being visualized here as there are many more flights that arrived compared to those with missing times. To adjust this, we simply need to change the y-axis from counts to density.
+
+```{r miss_density, message = FALSE}
+flights %>%
+  mutate(
+    miss_arrival = is.na(arr_time)
+  ) %>%
+  ggplot(mapping = aes(x = sched_arr_time, y = ..density..)) + 
+  geom_freqpoly(aes(color = miss_arrival)) +
+  theme_bw()
+```
+
+The two curves are now standardized so that the area under each curve equals 1, which in turn makes comparison between the two groups easier.
+
+One other special note, for EDA internally, there is no need to spend much time worrying about formatting of the graphics. However, if this plot above would be included in a report or manuscript, this figure would need additional polish to be included.
+
+
+### Variation
+Another common EDA question is related to variation. Variation is important for statistics, without variation there is no need to do statistics. The best way to explore variation of any type of variable is through visulization. This section will be broken into two sub areas, one that explores qualitative and another that explores quantitative.
+
+#### Qualitative Variables
+Bar graphs (frequency tables) are commonly used to explore variation in qualitative variables. For example, if we wished to explore the number of flights that took off for each month of the year from NYC:
+
+```{r count_flights}
+ggplot(flights, aes(factor(month))) + 
+  geom_bar() + 
+  theme_bw()
+```
+
+One special note about the above code, I used the `factor()` function so that ggplot specifically added all the values of the variable to the x-axis. By default since the month variable is being treated as an integer (a number), it would not show all the values for month.
+
+These counts could be calculated manually with the use of dplyr using the `count` function. The `count` function basically creates a frequency table. More complex tables can be created by passing additional variables to the `count` function.
+
+```{r month_count}
+flights %>%
+  count(month)
+```
+
+
+#### Exercises
+1. Copy the code from the bar graph above, but instead of wrapping the month variable in factor, try it without it. What is different? Extra, using the `scale_x_continuous` function, can you manually add each of the 12 numeric month values to the plot?
+2. Using dplyr, manually calculate the number of flights that took off for every day of every month. In other words, how many flights took off everyday of the year. Which day had the most flights?
+
+#### Quantitative Variables
+Histrograms, frequency polygons, or density curves are three common options to explore variation with quantitative variables. Within the flights data, suppose we were interested in exploring the variation in the distance traveled, this could easily be done with a histrogram.
+
+```{r distance_hist, message = FALSE}
+ggplot(flights, aes(distance)) + 
+  geom_histogram() + 
+  theme_bw()
+```
+
+We could also use a frequency polygon:
+
+```{r distance_freqpoly, message = FALSE}
+ggplot(flights, aes(distance)) + 
+  geom_freqpoly() + 
+  theme_bw()
+```
+
+We could also use a density curve:
+
+```{r distance_density}
+ggplot(flights, aes(distance)) + 
+  geom_density() + 
+  theme_bw()
+```
+
+When exploring the variation for a single variable overall, I tend to use histograms. However, when attempting to see if the variation changes across values of a categorical variable, histograms are difficult as the groups likely overlap. These are instances when using the frequency polygon or density curves are useful. Here are examples of both when exploring variation differences by month.
+
+```{r distance_month, message = FALSE}
+ggplot(flights, aes(distance)) + 
+  geom_freqpoly(aes(color = factor(month))) + 
+  theme_bw()
+ggplot(flights, aes(distance)) + 
+  geom_density(aes(color = factor(month))) + 
+  theme_bw()
+```
+
+You can also calculate the counts plotted in the histograms and frequency polygons using the `count` as with qualitative variables. We just now need to use the `cut_width` function to specify bins.
+
+```{r distance_count}
+flights %>%
+  count(cut_width(distance, 100))
+```
+
+Note, these counts may differ from above as the binwidth was not specifically stated when creating the histrogram or frequency polygon. 
+
+It may also be useful to calculate the variance, standard deviation, or the range. These can be calculated using the `summarize` function.
+
+```{r variation_descrip}
+flights %>%
+  summarize(
+    var_dist = var(distance, na.rm = TRUE),
+    sd_dist = sd(distance, na.rm = TRUE),
+    min_dist = min(distance, na.rm = TRUE),
+    max_dist = max(distance, na.rm = TRUE)
+  )
+```
+
+You could pair this with the `group_by` function to calculate these values for different groups (e.g. by month).
+
+#### Exercises
+1. Explore variation in the air_time variable. 
+2. Does the variation in the air_time variable differ by month? 
+
+### Distributions
+Exploring distributions for variables is a very similar process to exploring the variation, the question is just different. Most often we are interested in exploring if the shape of the distribution is approximately normal. This will become more interesting when we start fitting models to explore potential assumption violations in the residuals. We leave these discussions until then.
+
+### Covariation
+Covariation is the process of comparing how two (or more) variables are related. The most common method for exploring covariation is through scatterplots. However, these are most natural for two continuous variables. Other plots are useful for a mixture of variable types or for two qualitative variables. We will explore each in turn.
+
+#### Two Qualitative Variables
+Covariation in two qualitative variables is more difficult to view visually due to the restricted possible values in each variable. Suppose for example, we wished to explore covariation in the origin of the flight and the carrier. 
+
+```{r carrier_origin}
+ggplot(flights, aes(origin, carrier)) + 
+  geom_count()
+```
+
+This plot is okay, however, I think a more useful plot is to use a tile plot to explore these differences with color.
+
+```{r origin_carrier_tile}
+flights %>%
+  count(origin, carrier) %>%
+  ggplot(aes(origin, carrier)) + 
+  geom_tile(aes(fill = n)) + 
+  theme_bw()
+```
+
+Note, that holes mean missing values (i.e. no flights from that airport from that carrier).
+
+#### Exercises
+1. Explore the covariation between the month and day variables. Note, these are treated as continuous in the data, but in reality they are likely best represented as qualitative.
+
+#### Two Quantitative Variables
+Scatterplots are useful for two quantitative variables. Suppose for example that we wish to explore the relationship between the air_time variable and the arr_delay variable. This could be done with a scatterplot.
+
+```{r quant_cov}
+ggplot(flights, aes(air_time, arr_delay)) + 
+  geom_point() + 
+  theme_bw()
+```
+
+One problem with the plot above, is overplotting. There are two fixes for this, one is to use transparent points using the `alpha` argument to the `geom_point` function.
+
+```{r transparency}
+ggplot(flights, aes(air_time, arr_delay)) + 
+  geom_point(alpha = .05) + 
+  theme_bw()
+```
+
+Another approach that will simplify the exploration is to use boxplots. This will involve grouping the air_time variable into "bins." 
+
+```{r boxplot_twoquant}
+ggplot(flights, aes(x = air_time, y = arr_delay)) + 
+  geom_boxplot(aes(group = cut_width(air_time, 50))) + 
+  theme_bw()
+```
+
+Even another more sophisticated graphic is to do the quantitative alternative to `geom_tile`. Note, the code below uses the hexbin package, but a similar function is `geom_bin2d`.
+
+```{r hex_twoquant}
+# install.packages("hexbin")
+library(hexbin)
+ggplot(flights, aes(x = air_time, y = arr_delay)) + 
+  geom_hex()
+```
+
+
+#### Adding a Third Variable
+Adding a third variable is often useful, but can be difficult to think about procedurally. The type of plot that is useful depends on the type the third variable is. For example, if the third variable is also quantitative, the visualization is more difficult, however, if the third variable is qualitative, there are two main options. These will be explored in more detail below.
+
+The main two approaches for adding a third variable when it is qualitative is to use a different color/shape for the values of this variable or to facet the plot. Suppose we wished to explore the covariation between the following three variables: air_time, arr_delay, and origin. The two different options are shown below.
+
+```{r three_vars}
+ggplot(flights, aes(air_time, arr_delay)) + 
+  geom_hex() + 
+  facet_grid(. ~ origin) + 
+  theme_bw()
+ggplot(flights, aes(air_time, arr_delay)) + 
+  geom_point(aes(color = origin), alpha = .05) + 
+  theme_bw()
+```
+
+Plotting three quantitative variables commonly involves binning one one the variables to turn it into an ordinal variable with different levels. For example, see the example with two variables and the boxplot, a similar approach could be used to facet by this third variable. Below is a simple example:
+
+```{r three_quant}
+ggplot(flights, aes(x = air_time, y = arr_delay)) + 
+  geom_hex() + 
+  theme_bw() + 
+  facet_wrap(~ cut_width(dep_time, 250))
+```
+
+
+
+#### One Quantitative, One Qualitative
+This was actually already discussed in the discussion of variation by exploring differences in variation for different levels of a qualitative variable (see above). If the variation differs by groups, there is then evidence of covariation.
+
+#### Correlations
+It is also useful to calculate and visualize raw correlations. To calculate raw correlations (assuming only quantitative variables), the `cor` function is useful.
+
+```{r cor}
+flights %>%
+  select(air_time, arr_delay, dep_time) %>%
+  cor(use = 'pairwise.complete.obs')
+```
+
+To visualize a correlation matrix, the GGally package is useful. Note, the `ggpairs` function can take some time to run.
+```{r ggally, message = FALSE}
+# install.package("GGally")
+library(GGally)
+flights %>%
+  select(air_time, arr_delay, dep_time) %>%
+  na.omit() %>%
+  sample_n(1000) %>%
+  ggpairs()
+```
+
+#### Exercises
+1. Explore covariation in the dep_delay and arr_delay variables. What type of relationship, if any, appears to be present?
+2. Explore the relationship between dep_delay, arr_delay, and origin. What type of relationship is present. Does the relationship between dep_delay and arr_delay differ by origin?
+3. Finally, calculate the correlation matrix for dep_delay, arr_delay, and dep_time.
+
+### Rare/Common Cases
+The last question of use to explore when performing EDA is looking for the presence of rare or common cases. In other words, an exploration of any outliers and the central tendency of the distribution.
+
+When we explored variation in the distance variable earlier, there may have been extreme values we'd want to explore in more detail.
+
+```{r distance_extreme, message = FALSE}
+ggplot(flights, aes(distance)) + 
+  geom_histogram() +
+  theme_bw()
+```
+
+Notice the large distance value, to get a better view of how many there are here, we can use `coord_cartesian` to zoom in.
+
+```{r distance_coord, message = FALSE}
+ggplot(flights, aes(distance)) + 
+  geom_histogram() + 
+  theme_bw() + 
+  coord_cartesian(ylim = c(0, 5000))
+```
+
+Note, that in the above plot, `coord_cartesian` does not remove any points, simply changes the coordinates that are plotted. We could also pull these out using filter as well.
+
+```{r distance_filter}
+flights %>%
+  filter(distance > 3000) %>%
+  arrange(distance)
+```
+
+#### Measures of Central Tendency
+Exploring measures of central tendency or simply common values/repeated of common values can also be important.
+
+```{r common_values}
+ggplot(flights, aes(arr_time)) +
+  geom_histogram(binwidth = 50) +
+  theme_bw()
+```
+
+Measures of central tendency can be directly calculated using the `summarise` function. For example, exploring central tendency of the arr_delay variable.
+
+```{r ct_arrdelay}
+flights %>%
+  summarise(
+    avg_arrdelay = mean(arr_delay, na.rm = TRUE),
+    med_arrdelay = median(arr_delay, na.rm = TRUE)
+  )
+```
+
+More interesting computations can be performed by using adding in the `group_by` function.
+
+#### Exercises
+
+1. Using the `txhousing` data, explore rare/common cases in the median sale price for the following 3 cities: Austin, Dallas, and Houston.
+2. Using the data from #1, explore measures of central tendency in the median sale price of these three cities. How have these changed over time (year)?
+3. Create an effective visualization that explores differences in the median sale price over time for these three cities.

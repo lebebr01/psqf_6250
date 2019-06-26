@@ -1,0 +1,370 @@
+---
+title:  "Reproducible Tables"
+author: "Brandon LeBeau"
+date:   ""
+output:
+  html_notebook: default
+  html_document: default
+---
+
+Tables can be difficult to create well and more difficult to do them completely reproducible, although this is should be the goal of any analysis. I often fall into a framework where I decide to create a table manually, that is, enter information into a table by hand only to have to recreate this table again, and again, and again. This repeated structure can be time consuming and unintended errors can also creep into the workflow cycle.
+
+This section will attempt to tackle this topic of creating reproducible tables. This area has been expanding over the past year with different frameworks to do these functions. For example, there is an initial package release of the [gt](https://github.com/rstudio/gt) package that is attempting to create a grammar of tables, similar to the grammar of graphics utilized by ggplot2. Unfortunately, this package is still under active development, therefore the heuristics and functions in the package may change, therefore it is not quite ready for inclusion in the course.
+
+Fortunately, there are at least two other packages that will help us build upon to create flexible, powerful reproducible tables. These packages are called: `kableExtra` and `formattable`. This document will primarily use `kableExtra`, however there are some features in `formattable` that are cool to include in a table to create a more visual table, particularly if HTML is the desired output.
+
+These two packages can be installed the usual way:
+
+```{r install, eval = FALSE}
+install.packages(c("kableExtra", "formattable"))
+```
+
+The packages can also be loaded in the typical fashion using the `library()` function:
+
+```{r load-packages}
+library(kableExtra)
+library(formattable)
+library(tidyverse)
+```
+
+## Load in Data
+Let's start with some data and a basic table, then we will build up this table to include more complex ways to structure the data. I'm going to use the titanic data that were used in the discussion of the `glm()` function. 
+
+```{r setup, echo = FALSE}
+knitr::opts_knit$set(root.dir = "/Users/brandonlebeau/OneDrive - University of Iowa/Courses/Uiowa/Comp")
+# knitr::opts_knit$set(root.dir = "C:/Users/lebeb/OneDrive - University of Iowa/Courses/Uiowa/Comp")
+```
+
+```{r titanic_data}
+titanic <- read_csv('Data/titanic.csv')
+titanic
+```
+
+Suppose we were interested in exploring summary statistics by the different classes of passengers (Pclass variable). We could compute the summary statistics using dplyr as follows.
+
+```{r titanic-summary}
+titanic %>%
+  group_by(Pclass) %>%
+  summarise(avg_age = mean(Age, na.rm = TRUE),
+            sd_age = sd(Age, na.rm = TRUE),
+            avg_fare = mean(Fare, na.rm = TRUE),
+            sd_fare = sd(Fare, na.rm = TRUE),
+            min_fare = min(Fare, na.rm = TRUE),
+            max_fare = max(Fare, na.rm = TRUE),
+            perc_survived = mean(Survived, na.rm = TRUE) * 100,
+            number_passengers = n()
+  )
+```
+
+This is the format that we used in the past for summary statistics. One function that is handy for creating tables from this output is the `kable()` function from the knitr package. This function essentially turns the output into a markdown table that will be parsed more easily when you compile the document into HTML, PDF, or even a Word document. Below is how the `kable()` function can be used.
+
+```{r titanic-kable}
+titanic %>%
+  group_by(Pclass) %>%
+  summarise(avg_age = mean(Age, na.rm = TRUE),
+            sd_age = sd(Age, na.rm = TRUE),
+            avg_fare = mean(Fare, na.rm = TRUE),
+            sd_fare = sd(Fare, na.rm = TRUE),
+            min_fare = min(Fare, na.rm = TRUE),
+            max_fare = max(Fare, na.rm = TRUE),
+            perc_survived = mean(Survived, na.rm = TRUE) * 100,
+            number_passengers = n()
+  ) %>%
+  kable()
+```
+
+No arguments are needed to pass to the `kable()` function as it can automatically detect the format desired based on the yaml front matter in an Rmd document. There are useful arguments to kable that can make the table format a bit nicer to consume. 
+
+### Optional Arguments to `kable()`
+The four arguments to `kable()` that will be discussed in detail are, `digits`, `col.names`, `align`, and `caption`. You can likely guess what some of these arguments do, but we will go through each in turn. 
+
+#### `digits` argument
+The digits argument is a way to format numeric output to round values to a specific number of significant digits. The simplest specification is a single numeric value which will round all the numeric data columns to that many decimal points. For example, maybe we want to ensure there are no more than 2 decimal places, this can be achieved by setting `digits = 2` as an argument to `kable()`. Note, I first save the titanic summary output to an object to avoid duplication of this code throughout to focus on the new code.
+
+```{r titanic-kable-digits}
+titanic_summary <- titanic %>%
+  group_by(Pclass) %>%
+  summarise(avg_age = mean(Age, na.rm = TRUE),
+            sd_age = sd(Age, na.rm = TRUE),
+            avg_fare = mean(Fare, na.rm = TRUE),
+            sd_fare = sd(Fare, na.rm = TRUE),
+            min_fare = min(Fare, na.rm = TRUE),
+            max_fare = max(Fare, na.rm = TRUE),
+            perc_survived = mean(Survived, na.rm = TRUE) * 100,
+            number_passengers = n()
+  )
+
+kable(titanic_summary, digits = 2)
+```
+
+The digits argument can also be specified differently for every column in the table. When doing this, a vector of digits, one for each column, are passed directly to the digits argument. For example:
+
+```{r titanic-kable-dspec}
+kable(titanic_summary, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0))
+```
+
+#### `col.names` argument
+The `col.names` argument allows the user control over the names of the column labels. This would be useful here as the names of the columns are not descriptive enough. The `col.names` argument would be the same length as the number of columns in the resulting table.
+
+```{r titanic-kable-colnames}
+kable(titanic_summary, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'SD Age', 'Avg. Fare', 'SD Fare', 
+                      'Min. Fare', 'Max. Fare', '% Survived', 'Number of Passengers'))
+```
+
+#### `align` argument
+The align argument allows the user control over how the data are aligned in each column. The default values typically work well, but sometimes additional control is needed. Numeric columns are right-aligned by default and all other columns are left-aligned. When specifying the alignment operators, `l` is left-aligned, `c` is center-aligned, and `r` is right-aligned. These can be specified compactly such that a single character string is passed to the `align` argument where there is a character for each column in the resulting table. For example, perhaps we were interested in making the first column center-aligned, this could be done as follows.
+
+```{r titanic-kable-align}
+kable(titanic_summary, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'SD Age', 'Avg. Fare', 'SD Fare', 
+                      'Min. Fare', 'Max. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrrrrrr')
+```
+
+#### `caption` argument
+The final argument that is useful to specify is the `caption` argument. This argument is needed for any sort of cross-referencing of tables (more on this later). The caption argument takes a character string that represents the caption of the table.
+
+```{r titanic-kable-caption}
+kable(titanic_summary, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'SD Age', 'Avg. Fare', 'SD Fare', 
+                      'Min. Fare', 'Max. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrrrrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class')
+```
+
+These are the basic argument for creating simple reproducible tables in R. We will explore more advanced features next that can create more complicated tables as well as add some unique features that can upgrade the tables created. Some of these features are unique to HTML output, but many cross-over to PDF documents as well. These features may not work well with Word documents. This is largely due to the proprietary Word code base that is not open source and is not programmatic. 
+
+## More complicated tables with `kableExtra`
+The tables created with `kable()` are aimed to be simple tables that are relatively quick to create with less focus on the styling of the tables. For some tables, this approach is sufficient. For other tables, the additional formatting or styling is useful to control how the table appears in the final document. This is where the `kableExtra` package is useful and builds off the of the `kable()` function that we have already used to create reproducible tables.
+
+### Table styling
+Adding some basic styling is easy to do by adding a single function call `kable_styling()` after using the `kable()` function. Here is an example:
+
+```{r kable-styling}
+kable(titanic_summary, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'SD Age', 'Avg. Fare', 'SD Fare', 
+                      'Min. Fare', 'Max. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrrrrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling()
+```
+
+What the `kable_styling()` function does is explicitly style the resulting table with the [bootstrap](https://getbootstrap.com/) which is the default style for Rmd documents compiled to HTML. The added bonus of using a theme like bootstrap is you can get a lot of additional features that are defined in the bootstrap theme directly by specifying these options within the `kable_styling()` function.
+
+### Bootstrap table options
+The predefined bootstrap table options include striped tables, adding mouse hover effects, add borders around the table, make the table more condensed, or responsive to screen re-sizing. These options can be passed to the argument, `bootstrap_options` as a character vector. For example, adding stripes to the table, hover effects, a more condensed table, borders, and a responsive table would look like the following.
+
+```{r boostrap-options}
+kable(titanic_summary, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'SD Age', 'Avg. Fare', 'SD Fare', 
+                      'Min. Fare', 'Max. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrrrrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed', 
+                                      'responsive', 'bordered'))
+```
+
+### More options to `kable_styling`
+There are some additional options to `kable_styling()` that can come in handy. By default, tables span the full width of the document. This can be adjusted by adding the argument, `full_width = FALSE`. To show the benefits of this approach, I've made a smaller table with fewer columns.
+
+```{r full-width}
+titanic_summary_small <- titanic %>%
+  group_by(Pclass) %>%
+  summarise(avg_age = mean(Age, na.rm = TRUE),
+            avg_fare = mean(Fare, na.rm = TRUE),
+            perc_survied = mean(Survived, na.rm = TRUE) * 100,
+            number_passengers = n()
+  )
+
+kable(titanic_summary_small, digits = c(0, 2, 2, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'Avg. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed'),
+                full_width = FALSE)
+```
+
+When you specify a table to only span a portion of the document width, you now also have control over how the table is positioned on the page. The table could be on the left side, right side, or centered. These are passed to an argument called `position`.
+
+```{r full-width-position}
+kable(titanic_summary_small, digits = c(0, 2, 2, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'Avg. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed'),
+                full_width = FALSE, position = 'right')
+```
+
+There are also position arguments that allow the table to float. When a table floats, text can wrap around the table so that the table and text could be compared side by side. These arguments are passed to the `position` argument as before, however, now these argument names are `float_right` or `float_left`. 
+```{r}
+kable(titanic_summary_small, digits = c(0, 2, 2, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'Avg. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed'),
+                full_width = FALSE, position = 'float_right')
+```
+You could now describe the table in more detail to discuss the relevant findings. For example, we could now say that there are differences in the average age and fare prices across the classes. In addition, the class appears to be highly predictive of the survival rate. 
+
+The text that wraps around the table appears directly after the code chunk containing the table definition. This is important to keep in mind when writing your document. The text will continue to wrap as well until the end of the table, therefore you need to be a bit careful about this option if you want to ensure that a new section or paragraph is not next to the paragraph.
+
+The final argument that I'll mention briefly is `font_size` which adjusts the font size of the table. Here I switch back to the larger table with more summary columns, but now specify a smaller font size. The default font size is 12 I believe, therefore if you are trying to get a table to fit on a single page, decreasing the font size like this may be helpful.
+
+```{r font-size}
+kable(titanic_summary, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'SD Age', 'Avg. Fare', 'SD Fare', 
+                      'Min. Fare', 'Max. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrrrrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed'),
+                font_size = 10)
+```
+
+## Column or Row Control
+It is possible to format entire columns or rows within a table. This can be useful if there is an entire row or column that should be bold, italic, a different background color, or font color. These can be controlled at the column and row levels with the `column_spec()` or `row_spec()` functions respectively.
+
+These two function behave very similarly, with each function taking a column or row number as the first argument. Ranges of columns or rows are also possible to specify when declaring a column or row number. Subsequent arguments are the formatting arguments for that specific column or row. Examples or arguments are: `bold`, `italic`, `color`, `background`, `width`, or `angle` which make the font bold, italic, change the font color, change the background color, alter the width of the columns, or change the angle of the text respectively.
+
+Suppose given the table above, we wanted to make the "% Survived" and "Number of Passengers" columns bold and we wished to make the class three row italic change the background color to a light red. 
+
+
+```{r row-columns}
+kable(titanic_summary, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'SD Age', 'Avg. Fare', 'SD Fare', 
+                      'Min. Fare', 'Max. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrrrrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed')) %>%
+  column_spec(8:9, bold = TRUE, width = '0.75in') %>%
+  row_spec(3, italic = TRUE, background = "#FF6347")
+```
+
+You'll notice that the `bold` and `italic` arguments are logical, specifying TRUE turns the attribute on. Secondly, the identification of the column and rows that are to be formatted is done with column and row numbers respectively. When declaring the row number, the header row is skipped. The header can be formatted using the `row_spec()`, however you would specify the row number as 0. Finally, names of colors that are valid within R can be used as a character string, (use `colors()` to see all the colors defined within R), but hex codes can also be specified which can give further control. The `color` argument works identically to the `background` argument. Finally, the `width` argument was used which forced the last two columns to be 0.75 inches wide respectively. This argument can be particularly useful for columns that have text strings that are long. 
+
+## Cell Control
+Cell control is another way to format a table, but this time the formatting is done within the cells with the `cell_spec()` function. Another way to think about this is conditional logic for specific cells in the table. This process is done before being passed to the `kable()` function via a call to `mutate()`. Suppose for example, we wanted to color the cells differently for the percentage survival greater than 50% compared to those less than 50%. Here is an example of doing this.
+
+```{r cell-control}
+titanic_summary %>% 
+  mutate(
+    perc_survived = cell_spec(round(perc_survived, 3), 
+                              color = ifelse(perc_survived > 50, 
+                                                  '#440154', '#FDE725'))
+  ) %>% 
+  kable(escape = FALSE, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'SD Age', 'Avg. Fare', 'SD Fare', 
+                      'Min. Fare', 'Max. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrrrrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed')) %>%
+  column_spec(8:9, bold = TRUE, width = '0.75in')
+```
+
+A couple of things to note about the `cell_spec()` function. When using `cell_spec()`, the additional argument, `escape = FALSE` to the `kable()` function must be specified. In addition, notice the `round()` function used within the `mutate()` function. This is needed to ensure that the digits are rounded as this column will be ignored by the `digits` argument from the `kable()` function. Additional formatting can also still be passed using the `column_spec()` function after the `cell_spec()` function was used. This is done here to control the width and bold font specification. 
+
+
+### Using `formattable` and `kableExtra` together
+The `formattable` package has a couple cool elements that work with `kableExtra`. One that I find useful to use is the `color_bar()` function. The `color_bar()` function adds a bar chart in addition to the numeric values already depicted in the table. This argument is also used prior to the table being passed to the `kable()` function. Let's try to turn the last column, Number of Passengers, to a bar chart that is light red colored. The `color_bar()` function is a bit unique in that it takes two sets of parentheses specifying the main two arguments. The function takes the following form, `color_bar("#FF6347")(number_passengers)` where the first argument is the color for the bars and the second argument is the variable to use. Finally, the `color_bar()` function is specified within a `mutate()` function call prior to being passed to the `kable()` function. The argument `escape = FALSE` also needs to be specified in the `kable()` function. 
+
+```{r formattable}
+titanic_summary %>% 
+  mutate(
+    perc_survived = cell_spec(round(perc_survived, 3), 
+                              color = ifelse(perc_survived > 50, 
+                                                  '#440154', '#FDE725')),
+    number_passengers = color_bar("#FF6347")(number_passengers)
+  ) %>% 
+  kable(escape = FALSE, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'SD Age', 'Avg. Fare', 'SD Fare', 
+                      'Min. Fare', 'Max. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrrrrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed')) %>%
+  column_spec(8, bold = TRUE, width = '0.75in') %>% 
+  column_spec(9, bold = TRUE)
+```
+
+
+
+## Grouped Columns or Rows
+The last element of the table formatting that will be covered is the ability to add grouped columns or rows. The `add_header_above()` function gives the user the ability to add additional header columns above the currently defined header(s). This is helpful to add a grouping label that spans multiple columns and remove redundancy in the header labels across columns. For example, if you look at the original `titanic_summary` data object created previously, there are two columns representing descriptive statistics for the age variable and four columns for the fare variable. The age and fare variable labels can be removed and added as an additional header. The `add_header_above()` function takes a character string representing the names of the new header labels and the number of columns that these labels should span.
+
+```{r add-header}
+kable(titanic_summary, digits = c(0, 2, 2, 2, 2, 1, 1, 3, 0),
+        col.names = c('Class', 'Avg.', 'SD', 'Avg.', 'SD', 
+                      'Min.', 'Max.', '% Survived', 'Number of Passengers'),
+        align = 'crrrrrrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed', 'bordered')) %>% 
+  add_header_above(c("", "Age" = 2, "Fare" = 4, "", ""))
+```
+
+### Group Row Labels
+Group row labels can also be added to break up a table into different sections with the `group_rows()` function. This function takes three main arguments, the first being the row label as a character string followed by the starting row to include in the group and the ending row. For example, if the original titanic descriptive statistics was broken up for males and females, this grouping variable could be added to split up the table. The following code generates descriptive statistics for males and females, then combines these into a single data-frame to be included in the table. 
+
+```{r titanic-summary-sex}
+titanic_summary_male <- titanic %>%
+  filter(Sex == 'male') %>%
+  group_by(Pclass) %>%
+  summarise(avg_age = mean(Age, na.rm = TRUE),
+            avg_fare = mean(Fare, na.rm = TRUE),
+            perc_survied = mean(Survived, na.rm = TRUE) * 100,
+            number_passengers = n()
+  )
+titanic_summary_female <- titanic %>%
+  filter(Sex == 'female') %>%
+  group_by(Pclass) %>%
+  summarise(avg_age = mean(Age, na.rm = TRUE),
+            avg_fare = mean(Fare, na.rm = TRUE),
+            perc_survied = mean(Survived, na.rm = TRUE) * 100,
+            number_passengers = n()
+  )
+titanic_summary_sex <- dplyr::bind_rows(
+  titanic_summary_male,
+  titanic_summary_female,
+  titanic_summary_small
+)
+titanic_summary_sex
+```
+
+This table can then be passed to the `kable()` function and the `group_rows` function can be used to differentiate between the rows that are male, female, or total.
+
+```{r group-rows}
+kable(titanic_summary_sex, digits = c(0, 2, 2, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'Avg. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrr',
+        caption = 'Descriptive statistics of Titanic passengers by ticket class') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed'),
+                full_width = FALSE) %>%
+  kableExtra::group_rows('Male', 1, 3) %>%
+  kableExtra::group_rows('Female', 4, 6) %>%
+  kableExtra::group_rows('Total', 7, 9)
+```
+
+One note, the addition of `kableExtra::group_rows()` was used above due to there being two `group_rows()` function since the dplyr v0.8 was released. The `kableExtra::group_rows()` syntax tells R to look for the `group_rows()` function directly within the `kableExtra` package. This avoids duplicate function names across packages and ensures that the correct function is used in this case.
+
+## Cross-referencing tables
+The final topic to discuss briefly is cross-referencing of tables in Rmd documents. Cross-referencing allows the user to allow for the labeling of table numbers to be done dynamically and automatically rather than looking at the table numbers and updating if these change. The chunk label name from the Rmd chunk is used for the identification of the label name for cross-referencing. Specifically, cross-referencing a table would take this general form: `@\ref(tab:chunkname)` where the "chunkname" portion would be replaced with the name used for the table chunk. For example, when creating the chunk below to produce the table, the chunk name, "cross-reference" was used, therefore the cross-referencing code would look like the following: `@\ref(tab:cross-reference)`. Therefore, one could write, explore Table "@\ref(tab:cross-reference)" for descriptive statistics by ticket class for males, females, and total numbers. Note: I put the citation portion in quotes as these do not work in R notebook output, but should work if you compile the Rmd document to HTML or PDF.
+
+```{r cross-reference, caption = 'Descriptive statistics of Titanic passengers by ticket class'}
+kable(titanic_summary_sex, digits = c(0, 2, 2, 3, 0),
+        col.names = c('Class', 'Avg. Age', 'Avg. Fare', '% Survived', 'Number of Passengers'),
+        align = 'crrrr') %>% 
+  kable_styling(bootstrap_options = c('striped', 'hover', 'condensed'),
+                full_width = FALSE) %>%
+  kableExtra::group_rows('Male', 1, 3) %>%
+  kableExtra::group_rows('Female', 4, 6) %>%
+  kableExtra::group_rows('Total', 7, 9)
+```
+
+The final note about cross-references, is that the table caption needs to be specified as a Rmd chunk option, not within the `kable()` function. The caption argument is specified the same as when specified with the `kable()` function, therefore this could be copied and pasted from the previous examples.
+
+
+## Additional Resources
+Below are some additional resources for working with reproducible tables in R.
+
+* [kableExtra HTML Vignette](https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html)
+* [kableExtra PDF Vignette](https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_pdf.pdf)
+* [kableExtra with formattable](https://cran.r-project.org/web/packages/kableExtra/vignettes/use_kableExtra_with_formattable.html)
+* [gt package (in active development)](https://github.com/rstudio/gt)

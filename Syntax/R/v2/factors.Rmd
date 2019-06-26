@@ -1,0 +1,170 @@
+---
+title:  "Factor Variables in R"
+author: "Brandon LeBeau"
+date:   "February 20, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+To date I have ignored factor variables and how these are implemented in R. Much of this is due to the greater flexibility of character vectors instead of factors. Also, if using the `readr` or `readxl` packages to read in data, the variables are also read in as character strings instead of factors. However, there are situations when factors are useful. Most of these uses are for readability when creating output formats for a report or paper.
+
+This set of notes will make use of the following three packages:
+```{r packages, message = FALSE}
+library(tidyverse)
+library(forcats)
+library(fivethirtyeight)
+```
+
+## Uses for Factors
+To see a few of the benefits of a factor, assume we have a variable that represents the levels of a survey question with five possible responses and we only saw three of those response categories.
+
+```{r responses}
+resp <- c('Disagree', 'Agree', 'Neutral')
+```
+
+This type of variable has a natural order, namely the disagree side of the scale (i.e. strongly disagree) to the agree side of the scale (i.e. strongly agree) with neutral belonging in the middle. However, if we sort this variable, this ordering will not be taken into account with a character string.
+
+```{r sort_resp}
+sort(resp)
+```
+
+Notice, these are actually in alphabetical order, likely not what we wanted. This can be fixed by defining this variable as a factor with levels of the variable specified.
+
+
+```{r levels}
+scale_levels <- c('Strongly Disagree', 'Disagree', 
+                  'Neutral', 'Agree', 'Strongly Agree')
+resp_fact <- factor(resp, levels = scale_levels)
+resp_fact
+sort(resp_fact)
+```
+
+Another benefit, if values that are not found in the levels of the factor variable, these will be replaced with NAs. For example,
+
+```{r outside_levels}
+factor(c('disagree', 'Agree', 'Strongly Agree'), 
+       levels = scale_levels)
+```
+
+We can also explore valid levels of a variables with the `levels` function.
+
+```{r show_levels}
+levels(resp_fact)
+```
+
+#### Exercises
+1. How are factors stored internally by R? To explore this, use the `str` function on a factor variable and see what it looks like?
+2. To further this idea from #1, what happens when you do each of the following commands? Why is this happening?
+```{r factor_numeric, eval = FALSE}
+as.numeric(resp)
+as.numeric(resp_fact)
+```
+
+
+## Common Factor Manipulations
+In addition to setting the levels of the variable, there are two common tasks useful with factors.
+
+1. Reorder factor levels for plotting or table creation
+2. Change the levels of the factor (i.e. collapse levels)
+
+Examples of each of these will be given with the `weather_check` data from the `fivethirtyeight` package.
+
+```{r weather}
+weather_check
+```
+
+
+### Reorder Factor Variables
+To show examples of this operation, suppose we calculated the proportion of respondents that checked the weather daily by region of the country. We could use dplyr for this:
+
+```{r prop_check_weather}
+prop_check_weather <- weather_check %>%
+  group_by(region) %>%
+  summarise(prop = mean(ck_weather))
+prop_check_weather
+```
+
+This would be a bit easier to view if we plotted this data:
+
+```{r prop_weather}
+ggplot(prop_check_weather, aes(prop, region)) + 
+  geom_point()
+```
+
+This plot is difficult to read, primarily due to the way the points are ordered. Showing the regions in alphabetical order makes it more difficult to discern the trend. Instead, we would likely wish to reorder this variable by the ascending order of the proportion that check the weather. We will use the `fct_reorder` function from the `forcats` package. Note, I also omit the NA category here.
+
+```{r prop_weather_reorder}
+ggplot(na.omit(prop_check_weather), 
+       aes(prop, fct_reorder(region, prop))) + 
+  geom_point()
+```
+
+Need to be a bit careful with this operation however. For example:
+```{r reorder_income}
+weather_check %>%
+  group_by(hhold_income) %>%
+  summarise(prop = mean(ck_weather)) %>%
+  na.omit() %>%
+  ggplot(aes(prop, fct_reorder(hhold_income, prop))) + 
+  geom_point()
+```
+
+Instead, this is the proper way to show this relationship:
+```{r income}
+weather_check %>%
+  group_by(hhold_income) %>%
+  summarise(prop = mean(ck_weather)) %>%
+  na.omit() %>%
+  ggplot(aes(prop, hhold_income)) + 
+  geom_point()
+```
+
+#### Exercises
+1. Using data from the `fivethirtyeight` package called `flying`, explore the proportion of respondents that believe the reclining the chair while flying should be eliminated (the variable is recline_eliminate).
+2. Do these proportions differ by the location? 
+3. Create a graphic that captures this relationship, you may wish to reorder the columns to more appropriately represent the relationship.
+
+### Rename Factor Levels
+These operations are useful to collapse categories or rename levels for publication. The primary function we will use for this operation is `fct_recode` from the `forcats` package. 
+
+Again, using the `weather_check` data, suppose we wished to change the levels of the age variable. The levels currently are:
+
+```{r age_levels}
+levels(weather_check$age)
+```
+
+Suppose we wished to better represent these as words. We can use this with `mutate` from dplyr combined with `fct_recode`:
+
+```{r}
+weather_check %>%
+  mutate(age_recode = fct_recode(age,
+      '18 to 29' = '18 - 29',
+      '30 to 44' = '30 - 44',
+      '45 to 59' = '45 - 59'
+  )) %>%
+  count(age_recode)
+```
+
+We could also collapse categories by assigning many levels to the same new level. For example, suppose we wished to collapse the ck_weather_watch variable to unlikely and likely instead of the very unlikely to very likely.
+```{r ck_watch}
+levels(weather_check$ck_weather_watch)
+weather_check %>%
+  mutate(watch_recode = fct_recode(ck_weather_watch,
+         'Unlikely' = 'Very unlikely',
+         'Unlikely' = 'Somewhat unlikely',
+         'Likely' = 'Somewhat likely',
+         'Likely' = 'Very likely'
+  )) %>%
+  count(watch_recode)
+```
+
+Finally, one last option that may be useful is to lump together categories that are too small to report independently. This functionality is implemented with the function `fct_lump`. For example, suppose we want to lump the region variable together to have only 5 regions.
+```{r lump_income}
+weather_check %>%
+  mutate(region = fct_lump(region, n = 5)) %>%
+  count(region, sort = TRUE)
+```
+
+#### Exercises
+1. Again, using the `flying` data from the `fivethirtyeight` package, is there a relationship between the proportion of respondents who have a children under 18 years old and if they believe it is rude to bring a baby on a plane? For this question, collapse the baby variable to two levels, no and yes.

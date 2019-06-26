@@ -1,0 +1,256 @@
+%
+%  Syllabus template for use with http://kjhealy.github.com/latex-custom-kjh
+%
+\documentclass[11pt,article,oneside]{memoir}
+
+%% Script-based version control (requires vc package)
+% \input{vc}     
+
+\usepackage{graphicx, url}
+\usepackage{rotating}        
+\usepackage{memoir-article-styles} % in latex-custom-kjh/needs-memoir  
+\usepackage{termcal}
+\usepackage{tikz}
+\DeclareGraphicsRule{.mps}{eps}{*}{}
+
+% Define light grey color
+\usepackage{xcolor}
+\definecolor{lightgrey}{gray}{0.85}
+\definecolor{uiblack}{RGB}{0, 0, 0}
+\definecolor{uigold}{RGB}{255, 225, 0}
+\definecolor{uigold2}{RGB}{246, 168, 0}
+
+\usepackage[listings,skins]{tcolorbox}
+\tcbset{colback=lightgrey, colframe = black, fonttitle=\large\bfseries, sharp corners,
+ enhanced, attach boxed title to top left={xshift=-2mm,yshift=-2mm}, boxed title style={colback=black}}
+%\newtcolorbox{mybox}[1]{colback=lightgrey,
+%colframe=black,fonttitle=\bfseries,
+%title=#1}
+
+\tcbuselibrary{skins,breakable}
+\newcounter{schedule}
+\colorlet{colexam}{red!75!black}
+
+\newtcolorbox[use counter=schedule]{schedule}[1]{%
+empty,title={#1},attach boxed title to top left,
+boxed title style={empty,size=minimal,toprule=2pt,top=4pt,
+overlay={\draw[uiblack,line width=2pt]
+([yshift=-1pt]frame.north west)--([yshift=-1pt]frame.north east);}},
+coltitle=uiblack,fonttitle=\large\bfseries,
+before=\par\medskip\noindent,parbox=false,boxsep=0pt,left=0pt,right=3mm,top=4pt,
+breakable,pad at break=0mm,
+overlay unbroken={\draw[uigold2,line width=1pt]
+([yshift=-1pt]title.north east)--([xshift=-0.5pt,yshift=-1pt]title.north-|frame.east)
+--([xshift=-0.5pt]frame.south east)--(frame.south west); },
+overlay first={\draw[uigold2,line width=1pt]
+([yshift=-1pt]title.north east)--([xshift=-0.5pt,yshift=-1pt]title.north-|frame.east)
+--([xshift=-0.5pt]frame.south east); },
+overlay middle={\draw[uigold2,line width=1pt] ([xshift=-0.5pt]frame.north east)
+--([xshift=-0.5pt]frame.south east); },
+overlay last={\draw[uigold2,line width=1pt] ([xshift=-0.5pt]frame.north east)
+--([xshift=-0.5pt]frame.south east)--(frame.south west);},%
+}
+
+
+\newtcolorbox{resource}[1]{%
+empty,title={#1},attach boxed title to top left,
+boxed title style={empty,size=minimal,toprule=2pt,top=4pt,
+overlay={\draw[uiblack,line width=2pt]
+([yshift=-1pt]frame.north west)--([yshift=-1pt]frame.north east);}},
+coltitle=uiblack,fonttitle=\Large\bfseries,
+before=\par\medskip\noindent,parbox=false,boxsep=0pt,left=0pt,right=3mm,top=4pt,
+breakable,pad at break=0mm,
+overlay unbroken={\draw[uigold2,line width=1pt]
+([yshift=-1pt]title.north east)--([xshift=-0.5pt,yshift=-1pt]title.north-|frame.east)
+--([xshift=-0.5pt]frame.south east)--(frame.south west); },
+overlay first={\draw[uigold2,line width=1pt]
+([yshift=-1pt]title.north east)--([xshift=-0.5pt,yshift=-1pt]title.north-|frame.east)
+--([xshift=-0.5pt]frame.south east); },
+overlay middle={\draw[uigold2,line width=1pt] ([xshift=-0.5pt]frame.north east)
+--([xshift=-0.5pt]frame.south east); },
+overlay last={\draw[uigold2,line width=1pt] ([xshift=-0.5pt]frame.north east)
+--([xshift=-0.5pt]frame.south east)--(frame.south west);},%
+}
+
+
+% increase margins
+\usepackage[left=1.25in, right = 1in, top = 1in, bottom = 1in]{geometry}  
+\usepackage{enumitem}
+
+% making all description lists bold
+\setlist[description]{font=\large\bfseries\itshape, style=nextline, noitemsep}
+
+%% Choose font system. Comment out these lines if you are not using xelatex
+\usepackage{fontspec}
+\usepackage{xunicode} 
+
+% Define light grey color
+%\usepackage{xcolor}
+%\definecolor{lightgrey}{gray}{0.9}
+
+% Ajust quote environment to add more indentation on left side
+%\newenvironment{myquote}{\list{}{\leftmargin=1.25in\rightmargin=0.5in}\mybox{lightgrey}{\item[]}{\endlist}}
+\newenvironment{myquote}{\list{}{\leftmargin=1.25in\rightmargin=0.5in}\item[]}{\endlist}
+
+% Biblatex
+%\usepackage[american]{babel}
+%\usepackage[babel]{csquotes}
+%\usepackage[style=apa,
+%            bibstyle=authoryear,
+%            citestyle=authoryear-comp,
+%            uniquename=false,
+%            hyperref=true,
+%            backend=biber, babel=hyphen, bibencoding=inputenc]{biblatex}
+
+%% Fix biblatex's odd preference for using In: by default.
+%\renewbibmacro{in:}{%
+%  \ifentrytype{article}{}{%
+%  \printtext{\bibstring{}\intitlepunct}}}
+
+
+%% Links
+%\usepackage[usenames,dvipsnames]{color}                     
+\usepackage[xetex, 
+	colorlinks=true,
+	urlcolor=blue,
+	plainpages=false,
+  	pdfpagelabels, 
+  	bookmarksnumbered
+  	]{hyperref}   
+
+\begin{document}
+
+%%% xelatex font choices
+%\defaultfontfeatures{}
+%\defaultfontfeatures{Scale=MatchLowercase}    
+% You will need to buy these fonts, change the names to fonts you own, or comment out if not using xelatex.      
+\setromanfont[Mapping=tex-text]{Minion Pro} 
+\setsansfont[Mapping=tex-text]{Myriad Pro} 
+\setmonofont[Mapping=tex-text,Scale=0.8]{Pragmata} 
+
+%% blank label items; hanging bibs for text
+%% Custom hanging indent for vita items
+\def\ind{\hangindent=1 true cm\hangafter=1 \noindent}
+\def\labelitemi{$\cdot$}
+%\renewcommand{\labelitemii}{~}
+
+% Make figures as wide as the margins
+\setkeys{Gin}{width=1\textwidth} 
+
+%\chapterstyle{article-2}   % alternative styles are defined in latex-custom-kjh/needs-memoir/. Consider e.g.\chapterstyle{article-4}
+%\pagestyle{kjh} 
+  
+%\title{\mytitle}     
+%\author{\myauthor\smallskip\footnotesize\newline Office: 276 Sociology/Psychology \newline\texttt{\myemail}}
+%\date{}
+
+\begin{minipage}[b]{.7\linewidth}
+\begin{flushleft}
+{\huge PSQF 6250: Computer Packages for Statistical Analysis} \\[.1in]
+{\large\sffamily Spring 2019 - Online Course} \\
+\vspace*{.25in}
+{\large Brandon LeBeau, Ph.D.} \\[.05in]
+{\normalsize E-mail: \href{mailto:brandon-lebeau@uiowa.edu}{brandon-lebeau@uiowa.edu} \\Virtual Office Hours: T 12:30 pm to 2 pm or By appointment 
+   \\ Department: Psychological and Quantitative Foundations, 361 LC \\ DEO: Dr. Ali, 361 LC}
+\end{flushleft}
+\end{minipage}
+\begin{minipage}[t]{.3\linewidth}
+\includegraphics[width=.9\linewidth]{DomeUIed}
+\end{minipage}
+
+\vspace{.25in}
+
+
+\begin{myquote}
+Data does not give up their secrets easily. They must be tortured to confess. \hfill \emph{-- Jeff Hooper, Bell Labs} \\
+\rule{\linewidth}{.4pt}
+\end{myquote}
+
+
+% Include version information in footer if using vc package (see above). 
+% \thispagestyle{kjhgit}
+
+
+% Copyright Page
+% \textcopyright{} \mycopyright
+
+
+%
+% Main Content
+%
+
+\section*{Course Description}
+This course aims to give students an introduction to using R for statistical analysis. Students will work through examples dealing with data cleaning, data manipulation, variable creation, descriptive statistics, figures, tables, and inferential statistical methods. Additional topics such as version control, markdown, and others will be discussed.
+
+\section*{Course Objectives}
+By the end of the course, students should be comfortable doing data manipulation, cleaning, and analysis using R. This course will not teach you exactly \textbf{what} to do for every analysis, rather will attempt to give you tools to accomplish general data tasks and practice answering questions with data.
+
+\section*{Textbook}
+No required textbook for purchase. There will be numerous online resources that will be used for the course. These are listed below and are posted on the ICON site. Note: You can click the links below and it will take you directly to the source on ICON.
+
+\begin{resource}{git \hspace{.075in}}
+  \begin{itemize}
+   \item git - the simple guide -- Accessed here: \url{http://rogerdudler.github.io/git-guide/} or a cheat sheet \url{http://rogerdudler.github.io/git-guide/files/git_cheat_sheet.pdf}.
+  \end{itemize}
+\end{resource}
+\begin{resource}{Markdown}
+  \begin{itemize}
+   \item \href{https://uiowa.instructure.com/courses/73415/files/5639192/download?wrap=1}{markdown-cheatsheet}
+  \end{itemize}
+\end{resource}
+\begin{resource}{R \hspace{.2in}}
+  \begin{itemize}
+   \item R for Data Science -- Accessed here: \url{http://r4ds.had.co.nz/}
+   \item Other optional documents found on ICON.
+  \end{itemize}
+\end{resource}
+
+
+
+
+\section*{Course Requirements}
+\begin{description}[font=\large\bfseries]
+\item[Homework] 
+Homework assignments will be used to give hands on experience with the software. These homework assignments will give you an opportunity to answer questions with data, interpret results, and receive feedback on them. Each assignment will be worth 15 points with 8 total assignments. 
+\item[Quizzes]
+Online quizzes through ICON will be given roughly every week. These will test basic knowledge of statistical programs covered in the course. Each quiz will be worth 5 points with 12 total quizzes.
+\item[Project Proposal] 
+A short, one page at most, description of the project. A brief discussion of the data to be used, the type of model to be used, and the rationale for the model. Although not necessary, it is encouraged to discuss your projects with the instructor prior to submission. The project proposal will be worth 20 points.
+\item[Project]
+Each student is required to do a project. The project will consist of a short data analysis cycle. This will take the following approximate structure: find some data, pose a question, read in data, manipulate data, descriptive statistics, inferential statistics, short conclusion. The project will take the form of a shortened paper, therefore will likely not be suitable as is for publication (although it could possibly be extended after the course for this). The project will be 100 points and will take the place of a final exam.
+\item[Grading]
+The final grade is based on the total points from homework assignments and the course project. Grades are posted regularly to ICON. 
+ \begin{description}[noitemsep]
+ \item[Homework assignments] 120 points (15 points each -- 8 assignments)
+ \item[Project] 100 points
+ \item[Quizzes] 60 points (5 points each -- 12 quizzes)
+ \item[Project Proposal] 20 points
+%\vspace*{.2in} \\
+\item[Point Breakdown] Guidelines are given below, plus and minus grades will be given as well.
+ \begin{description}
+ \item[A] 270 to 300 points		 
+ \item[B] 240 to 269 points		
+ \item[C] 210 to 239 points   
+ \item[D] 180 to 209 points
+ \end{description}
+ \end{description}
+\end{description}
+
+\section*{Course and University Policies}
+\begin{description}
+\item[Announcements and Communication] %\hfill \\
+Any announcements regarding the course will be communicated via e-mail so please check it daily. Being on online course, submission of assignments and lectures will be posted to the course ICON site. Go to \href{http://icon.uiowa.edu}{icon.uiowa.edu} for access to the ICON site.
+\item[Adaptations and Modifications] Please inform me during the first two weeks if you require special adaptations or modifications to any assignment or due dates because of special circumstances such as learning disabilities, religious observances, or other appropriate needs.
+\item[Contesting a Grade] To contest a grade, please send me an e-mail detailing your reason within 48 hours of receiving the grade. This allows both of us time to think, reflect, and discuss the matter without taking class time from other students. When contesting a grade, provide a copy of the graded assignment.
+\item[Plagiarism] Unless you are otherwise instructed, your work should be entirely your own. Please take care in writing your term paper.  You should always be writing in your own words, citing others' ideas, and quoting text as appropriate.
+\item[Other Information] Please be aware of University policy statements regarding academic misconduct, academic accommodations, student complaint procedures, etc.  Consult the following websites:
+  \begin{itemize}
+    \item College policy on student complaints and dispute resolution \url{https://education.uiowa.edu/coe-policies/student-complaint-procedure}
+    \item College policy on student academic misconduct (plagiarism and cheating) \url{https://education.uiowa.edu/coe-policies/student-academic-misconduct}
+    \item Student disability services \url{https://sds.studentlife.uiowa.edu/}
+    \item University statements on student rights and responsibilities \url{http://dos.uiowa.edu/policies/}
+    \item This course is provided by the College of Education and the Division of Continuing Education.  Policies on matters such as course requirements, grading, and sanctions for academic dishonesty are governed by the College of Education. Students wishing to add or drop this course after the official deadline must receive approval from the Dean of the College of Education. The University policy on cross enrollments is at \url{https://education.uiowa.edu/coe-policies/cross-enrollment-policy}
+  \end{itemize}
+\end{description}
+
+\end{document}

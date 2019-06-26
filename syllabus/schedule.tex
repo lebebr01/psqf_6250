@@ -1,0 +1,339 @@
+%
+%  Syllabus template for use with http://kjhealy.github.com/latex-custom-kjh
+%
+\documentclass[11pt,article,oneside]{memoir}
+
+%% Script-based version control (requires vc package)
+% \input{vc}     
+
+\usepackage{graphicx, url}
+\usepackage{rotating}        
+\usepackage{memoir-article-styles} % in latex-custom-kjh/needs-memoir  
+\usepackage{termcal}
+\usepackage{tikz}
+\DeclareGraphicsRule{.mps}{eps}{*}{}
+
+% Define light grey color
+\usepackage{xcolor}
+\definecolor{lightgrey}{gray}{0.85}
+\definecolor{uiblack}{RGB}{0, 0, 0}
+\definecolor{uigold}{RGB}{255, 225, 0}
+\definecolor{uigold2}{RGB}{246, 168, 0}
+
+\usepackage[listings,skins]{tcolorbox}
+\tcbset{colback=lightgrey, colframe = black, fonttitle=\large\bfseries, sharp corners,
+ enhanced, attach boxed title to top left={xshift=-2mm,yshift=-2mm}, boxed title style={colback=black}}
+%\newtcolorbox{mybox}[1]{colback=lightgrey,
+%colframe=black,fonttitle=\bfseries,
+%title=#1}
+
+\tcbuselibrary{skins,breakable}
+\newcounter{schedule}
+\colorlet{colexam}{red!75!black}
+
+\newtcolorbox[use counter=schedule]{schedule}[1]{%
+empty,title={#1},attach boxed title to top left,
+boxed title style={empty,size=minimal,toprule=2pt,top=4pt,
+overlay={\draw[uiblack,line width=2pt]
+([yshift=-1pt]frame.north west)--([yshift=-1pt]frame.north east);}},
+coltitle=uiblack,fonttitle=\large\bfseries,
+before=\par\medskip\noindent,parbox=false,boxsep=0pt,left=0pt,right=3mm,top=4pt,
+breakable,pad at break=0mm,
+overlay unbroken={\draw[uigold2,line width=1pt]
+([yshift=-1pt]title.north east)--([xshift=-0.5pt,yshift=-1pt]title.north-|frame.east)
+--([xshift=-0.5pt]frame.south east)--(frame.south west); },
+overlay first={\draw[uigold2,line width=1pt]
+([yshift=-1pt]title.north east)--([xshift=-0.5pt,yshift=-1pt]title.north-|frame.east)
+--([xshift=-0.5pt]frame.south east); },
+overlay middle={\draw[uigold2,line width=1pt] ([xshift=-0.5pt]frame.north east)
+--([xshift=-0.5pt]frame.south east); },
+overlay last={\draw[uigold2,line width=1pt] ([xshift=-0.5pt]frame.north east)
+--([xshift=-0.5pt]frame.south east)--(frame.south west);},%
+}
+
+
+\newtcolorbox{resource}[1]{%
+empty,title={#1},attach boxed title to top left,
+boxed title style={empty,size=minimal,toprule=2pt,top=4pt,
+overlay={\draw[uiblack,line width=2pt]
+([yshift=-1pt]frame.north west)--([yshift=-1pt]frame.north east);}},
+coltitle=uiblack,fonttitle=\Large\bfseries,
+before=\par\medskip\noindent,parbox=false,boxsep=0pt,left=0pt,right=3mm,top=4pt,
+breakable,pad at break=0mm,
+overlay unbroken={\draw[uigold2,line width=1pt]
+([yshift=-1pt]title.north east)--([xshift=-0.5pt,yshift=-1pt]title.north-|frame.east)
+--([xshift=-0.5pt]frame.south east)--(frame.south west); },
+overlay first={\draw[uigold2,line width=1pt]
+([yshift=-1pt]title.north east)--([xshift=-0.5pt,yshift=-1pt]title.north-|frame.east)
+--([xshift=-0.5pt]frame.south east); },
+overlay middle={\draw[uigold2,line width=1pt] ([xshift=-0.5pt]frame.north east)
+--([xshift=-0.5pt]frame.south east); },
+overlay last={\draw[uigold2,line width=1pt] ([xshift=-0.5pt]frame.north east)
+--([xshift=-0.5pt]frame.south east)--(frame.south west);},%
+}
+
+
+% increase margins
+\usepackage[left=1.25in, right = .9in, top = .9in, bottom = 1in]{geometry}  
+\usepackage{enumitem}
+
+% making all description lists bold
+\setlist[description]{font=\large\bfseries\itshape, style=nextline, noitemsep}
+
+%% Choose font system. Comment out these lines if you are not using xelatex
+\usepackage{fontspec}
+\usepackage{xunicode} 
+
+% Define light grey color
+%\usepackage{xcolor}
+%\definecolor{lightgrey}{gray}{0.9}
+
+% Ajust quote environment to add more indentation on left side
+%\newenvironment{myquote}{\list{}{\leftmargin=1.25in\rightmargin=0.5in}\mybox{lightgrey}{\item[]}{\endlist}}
+\newenvironment{myquote}{\list{}{\leftmargin=1.25in\rightmargin=0.5in}\item[]}{\endlist}
+
+% Biblatex
+%\usepackage[american]{babel}
+%\usepackage[babel]{csquotes}
+%\usepackage[style=apa,
+%            bibstyle=authoryear,
+%            citestyle=authoryear-comp,
+%            uniquename=false,
+%            hyperref=true,
+%            backend=biber, babel=hyphen, bibencoding=inputenc]{biblatex}
+
+%% Fix biblatex's odd preference for using In: by default.
+%\renewbibmacro{in:}{%
+%  \ifentrytype{article}{}{%
+%  \printtext{\bibstring{}\intitlepunct}}}
+
+
+%% Links
+%\usepackage[usenames,dvipsnames]{color}                     
+\usepackage[xetex, 
+	colorlinks=true,
+	urlcolor=blue,
+	plainpages=false,
+  	pdfpagelabels, 
+  	bookmarksnumbered
+  	]{hyperref}   
+
+\begin{document}
+%%% xelatex font choices
+%\defaultfontfeatures{}
+%\defaultfontfeatures{Scale=MatchLowercase}    
+% You will need to buy these fonts, change the names to fonts you own, or comment out if not using xelatex.      
+\setromanfont[Mapping=tex-text]{Minion Pro} 
+\setsansfont[Mapping=tex-text]{Myriad Pro} 
+\setmonofont[Mapping=tex-text,Scale=0.8]{Pragmata} 
+
+%% blank label items; hanging bibs for text
+%% Custom hanging indent for vita items
+\def\ind{\hangindent=1 true cm\hangafter=1 \noindent}
+\def\labelitemi{$\cdot$}
+%\renewcommand{\labelitemii}{~}
+
+% Make figures as wide as the margins
+\setkeys{Gin}{width=1\textwidth} 
+
+%\chapterstyle{article-2}   % alternative styles are defined in latex-custom-kjh/needs-memoir/. Consider e.g.\chapterstyle{article-4}
+%\pagestyle{kjh} 
+  
+%\title{\mytitle}     
+%\author{\myauthor\smallskip\footnotesize\newline Office: 276 Sociology/Psychology \newline\texttt{\myemail}}
+%\date{}
+
+\begin{minipage}[b]{.7\linewidth}
+\begin{flushleft}
+{\huge PSQF 6250: Computer Packages for Statistical Analysis} \\[.1in]
+{\large\sffamily Spring 2019 - Online Course} \\
+\vspace*{.25in}
+{\large Brandon LeBeau, Ph.D.} \\[.05in]
+{\normalsize E-mail: \href{mailto:brandon-lebeau@uiowa.edu}{brandon-lebeau@uiowa.edu} \\Virtual Office Hours: T 12:30 pm to 2 pm or By appointment 
+   \\ Department: Psychological and Quantitative Foundations, 361 LC \\ DEO: Dr. Ali, 361 LC}
+\end{flushleft}
+\end{minipage}
+\begin{minipage}[t]{.3\linewidth}
+\includegraphics[width=.9\linewidth]{DomeUIed}
+\end{minipage}
+
+\vspace{.25in}
+
+\section*{Schedule}
+% Week 1
+\begin{schedule}{Week 1: January 14 - January 20}
+\begin{description}
+\item[Topics:] Reproducible Research; Markdown;  Installing R
+
+\item[Readings:] R for Data Science -- \textit{Chapter 27}
+
+\item[Homework:] Assignment 1 -- \textbf{Due January 31st}
+
+\end{description}
+\end{schedule}
+% Week 2
+\begin{schedule}{Week 2: January 21 - January 27}
+\begin{description}
+\item[Topics:] Graphics with R; R Basics
+
+\item[Readings:] R for Data Science -- \textit{Chapters 1 -- 4}
+
+\item[Homework:] 
+
+\end{description}
+\end{schedule}
+% Week 3
+\begin{schedule}{Week 3: January 28 - February 3}
+\begin{description}
+\item[Topics:] R Scripts; Data Munging
+
+\item[Readings:] R for Data Science -- \textit{Chapters 5 -- 6}
+
+\item[Homework:] Assignment 2 -- \textbf{Due February 14th}
+
+\end{description}
+\end{schedule}
+% Week 4
+\newpage
+\begin{schedule}{Week 4: February 4 - February 10}
+\begin{description}
+\item[Topics:] Exploratory Data Analysis 
+
+\item[Readings:] R for Data Science -- \textit{Chapter 7; 8 (opt)}
+
+\item[Homework:] Assignment 3 -- \textbf{Due February 22nd}
+
+\end{description}
+\end{schedule}
+% Week 5
+\begin{schedule}{Week 5: February 11 - February 17}
+\begin{description}
+\item[Topics:] Data Import; Restructuring Data; Joining Data
+
+\item[Readings:] R for Data Science -- \textit{Chapters 11 -- 13}
+
+\item[Homework:] Assignment 4 -- \textbf{Due March 8th}
+\end{description}
+\end{schedule}
+% Week 6
+\begin{schedule}{Week 6: February 18 - February 24}
+\begin{description}
+\item[Topics:] Linear Model Building
+
+\item[Readings:] R for Data Science -- \textit{Chapters 22 -- 24}
+
+\item[Homework:]
+
+\end{description}
+\end{schedule}
+
+% Week 7
+\begin{schedule}{Week 7: February 25 - March 3}
+\begin{description}
+\item[Topics:] Model Assumptions
+
+\item[Readings:] 
+
+\item[Homework:] Assignment 5 -- \textbf{Due March 26th}
+
+\end{description}
+\end{schedule}
+
+% Week 8
+\begin{schedule}{Week 8: March 4 - March 10}
+\begin{description}
+\item[Topics:] Other Models 
+
+\item[Readings:] 
+
+\item[Homework:] Assignment 6 -- \textbf{Due April 10th}
+
+\end{description}
+\end{schedule}
+% Week 9
+\begin{schedule}{Week 9: March 11 - March 17}
+\begin{description}
+\item[Topics:] Reproducible Tables 
+
+\item[Readings:] 
+
+\item[Homework:] Project Proposal -- \textbf{Due April 4th (firm deadline)}
+
+\end{description}
+\end{schedule}
+
+% Spring Break
+\begin{schedule}{Spring Break: March 18 - March 24 -- No Class}
+
+\end{schedule}
+
+
+% Week 10
+\begin{schedule}{Week 10: March 25 - March 31}
+\begin{description}
+\item[Topics:] Interactive Graphics
+
+\item[Readings:] 
+
+\item[Homework:] 
+
+\end{description}
+\end{schedule}
+% Week 11
+\begin{schedule}{Week 11: April 1 - April 7}
+\begin{description}
+\item[Topics:] Creating R Functions
+
+\item[Readings:] 
+\item[Homework:] Assignment 7 -- \textbf{Due April 20th}
+
+\end{description}
+\end{schedule}
+% Week 12
+\begin{schedule}{Week 12: April 8 - April 14}
+\begin{description}
+\item[Topics:] Creating R Functions
+
+\item[Readings:] 
+\item[Homework:] 
+
+\end{description}
+\end{schedule}
+% Week 13
+\begin{schedule}{Week 13: April 15 - April 21}
+\begin{description}
+\item[Topics:] Resampling and Bootstrapping
+
+\item[Readings:] 
+
+\item[Homework:]
+
+\end{description}
+\end{schedule}
+
+% Week 14
+\begin{schedule}{Week 14: April 22 - April 28}
+\begin{description}
+\item[Topics:] Monte Carlo Simulation with R
+
+\item[Readings:] 
+
+\item[Homework:] Assignment 8 -- \textbf{Due May 6th} \\
+ All homework assignments \textbf{due May 6th}
+
+\end{description}
+\end{schedule}
+% Week 15
+\begin{schedule}{Week 15: April 29 - May 5}
+\begin{description}
+\item[Topics:] Version Control
+
+\item[Readings:] git with github \\ git the simple guide
+
+\item[Homework:] \textbf{Project due by May 9th at 11:59 pm}
+
+\end{description}
+\end{schedule}
+
+
+\end{document}

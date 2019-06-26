@@ -1,0 +1,348 @@
+---
+title:  "Data Munging with R"
+author: "Brandon LeBeau"
+date:   "January 30, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Data munging (i.e. data transformations, variable creation, filtering) is a common task that is often overlooked in traditional statistics textbooks and courses. Even though it is omitted, the task of cleaning and organizing the data (coming in week 5 of the course)
+
+Data from the `fivethirtyeight` package is used in this set of notes to show the use of the `dplyr` verbs for data munging. This package can be installed with the following command:
+
+```{r fivethirtyeight, eval = FALSE}
+install.packages("fivethirtyeight")
+```
+
+To get started with this set of notes, you will need the following packages loaded:
+
+```{r load, message = FALSE}
+library(fivethirtyeight)
+library(tidyverse)
+```
+
+We are going to explore the `congress_age` data set in more detail. Take a few minutes to familiarize yourself with the data.
+
+```{r familiar, eval = FALSE}
+View(congress_age)
+?congress_age
+```
+
+```{r first10}
+congress_age
+```
+
+## Using `dplyr` for data munging
+The `dplyr` package uses verbs for common data manipulation tasks. These include:
+
+- `filter()`
+- `arrange()`
+- `select()`
+- `mutate()`
+- `summarise()`
+
+The great aspect of these verbs are that they all take a similar data structure, the first argument is always the data, the other arguments are unquoted column names. These functions also always return a data frame in which the rows are observations and the columns are variables.
+
+## Examples with `filter()`
+The `filter` function selects rows that match a specified condition(s). For example, suppose we wanted to select only the rows in the data that are a part of the 80th congress. The following code will do this action:
+
+```{r 80th}
+filter(congress_age, congress == 80)
+```
+
+Notice from above two things, first, the function returned a new data frame. Therefore, if this subsetted data is to be saved, we need to save it to an object, for example, as follows:
+
+```{r 80th_save}
+congress_80 <- filter(congress_age, congress == 80)
+```
+
+Notice now that the data were not automatically printed, instead it was saved into the object called `congress_80`. If you wish to preview the data and save it to an object in a single step, you need to wrap the command above in parentheses. Take a second to try this yourself.
+
+Secondly, notice from the above commands that equality in R is done with `==` not just a single `=`. The single `=` is used for named arguments, therefore when testing for equality you need to be sure to use `==`, this is a common frustration and source of bugs when getting started with R.
+
+Selecting values based on a character vector are similar to numeric values. For example, suppose we wanted to select only those rows pertaining to those from the senate. The following code will do that:
+```{r senate}
+senate <- filter(congress_age, chamber == 'senate')
+```
+
+### Combining Logical Operations
+The `filter` function becomes much more useful with more complex operations. For example, suppose we were interested in selecting the rows that belong to the 80th senate.
+```{r 80senate}
+filter(congress_age, congress == 80, chamber == 'senate')
+```
+
+By default, the `filter` function uses AND when combining multiple arguments. Therefore, the above command returned only the 102 rows belonging to senators from the 80th congress. The following figure gives a list of all other possible boolean operations.
+
+![](boolean.png)
+
+Using an example of the OR operator using `|` to select the 80th and 81st congress:
+
+```{r filter_or}
+filter(congress_age, congress == 80 | congress == 81)
+```
+Note that to do the OR operator, you need to name the variable twice. When selecting multiple values in the same variable, a handy shortcut is `%in%`. The same command can be run with the following shorthand: handy shortcut is `%in%`. The same command can be run with the following shorthard
+
+```{r filter_2}
+filter(congress_age, congress %in% c(80, 81))
+```
+
+### Not Operator
+Another useful operator that deserves a bit more discussion is the not operator, `!`. For example, suppose we wanted to omit the 80th congress:
+```{r not_80}
+filter(congress_age, congress != 80)
+```
+It is also possible to do not with an AND operator as follows:
+```{r 80_notsenate}
+filter(congress_age, congress == 80 & !chamber == 'senate')
+```
+
+#### Exercises
+1. Using the congress data, select the rows belonging to the democrats (party = D) from the senate of the 100th congress.
+2. Select all congress members who are older than 80 years old.
+
+### Note on Missing Data
+Missing data within R are represented with `NA` which stands for not available.
+
+There are no missing data in the congress data, however, by default the `filter` function will not return any missing values. In order to select missing data, you need to use the `is.na` function. 
+
+#### Exercise
+1. Given the following simple vector, run one filter that selects all values greater than 100. Write a second filter command that selects all the rows greater than 100 and also the NA value.
+```{r na_filter}
+df <- tibble(x = c(200, 30, NA, 45, 212))
+```
+
+## Examples with `arrange()`
+The `arrange` function is used for ordering rows in the data. For example, suppose we wanted to order the rows in the congress data by the state the members of congress lived in. This can be done using the `arrange` function as follows:
+```{r simple_arrange}
+arrange(congress_age, state)
+```
+
+Similar to the filter function, additional arguments can be added to add more layers to the ordering. For example, if we were interested in ordering the rows by state and then by party affiliation.
+```{r two_arrange}
+arrange(congress_age, state, party)
+```
+
+More variables can easily be added to the `arrange` function. Notice from the above two commands that the ordering of the rows is in ascending order, if descending order is desired, the `desc` function. For example, to order the data starting with the latest congress first:
+```{r descend}
+arrange(congress_age, desc(congress))
+```
+
+## Examples with `select()`
+The `select` function is used to select columns (i.e. variables) from the data but keep all the rows. For example, maybe we only needed the congress number, the chamber, the party affiliation, and the age of the members of congress. We can reduce the data to just these variables using `select`.
+```{r select}
+select(congress_age, congress, chamber, party, age)
+```
+
+Similar to the `arrange` functions, the variables that you wish to keep are separated by commas and come after the data argument.
+
+For more complex selection, the `dplyr` package has additional functions that are helpful for variable selection. These include:
+- `starts_with()`
+- `ends_with()`
+- `contains()`
+- `matches()`
+- `num_range()`
+
+These helper functions can be useful for selecting many variables that match a specific pattern. For example, suppose we were interested in selecting all the name variables, this can be accomplished using the `contains` function as follows:
+```{r contains}
+select(congress_age, contains('name'))
+```
+
+Another useful shorthand to select multiple columns in succession is the `:` operator. For example, suppose we wanted to select all the variables between congress and bithday. 
+
+```{r colon}
+select(congress_age, congress:birthday)
+```
+
+### Rename variables
+The select function does allow you to rename variables, however, using the select function to rename variables is not usually advised as you may end up missing a variable that you wish to keep during the renaming operation. Instead, using the `rename` function is better practice. 
+```{r rename}
+rename(congress_age, first_name = firstname, last_name = lastname)
+```
+
+By default, the rename function will not save changes to the object, if you wish to save the name differences (very likely), be sure to save this new step to an object.
+
+
+#### Exercises
+1. Using the `dplyr` helper functions, select all the variables that start with the letter 'c'.
+2. Rename the first three variables in the congress data to 'x1', 'x2', 'x3'.
+3. After renaming the first three variables, use this new data (ensure you saved the previous step to an object) to select these three variables with the `num_range` function.
+
+
+## Examples with `mutate()`
+`mutate` is a useful verb that allows you to add new columns to the existing data set. Actions done with `mutate` include adding a column of means, counts, or other transformations of existing variables. Suppose for example, we wished to convert the party affiliation of the members of congress into a dummy (indicator) variable. This may be useful to more easily compute a proportion or count for instance.
+
+This can be done with the `mutate` function. Below, I'm first going to use `select` to reduce the number of columns to make it easier to see the operation.
+
+```{r mutate, error = FALSE}
+congress_red <- select(congress_age, congress, chamber, state, party)
+
+mutate(congress_red, 
+       democrat = ifelse(party == 'D', 1, 0),
+       num_democrat = sum(democrat)
+       )
+```
+
+You'll notice that the number of rows in the data are the same (`r nrow(congress_red)`) as it was previously, but now the two new columns have been added to the data. One converted the party affiliation to a series of 0/1 values and the other variable counted up the number of democrats elected since the 80th congress. Notice how this last variable is simply repeated for all values in the data. The operation done here is not too exciting, however, we will learn another utility later that allows us to group the data to calculate different values for each group.
+
+Lastly, from the output above, notice that I was able to reference a variable that I created previously in the mutate command. This is unique to the `dplyr` package and allows you to create a single `mutate` command to add many variables, even those that depend on prior calculations. Obviously, if you need to reference a calculation in another calculation, they need to be done in the proper order.
+
+### Creation Functions
+There are many useful operators to use when creating additional variables. The R for Data Science text has many examples shown in [section 5.5.1](http://r4ds.had.co.nz/transform.html). In general useful operators include addition, subtraction, multiplication, division, descriptive statistics (we will talk more about these in week 4), ranks, logical comparisons, and many more. The exercises will have you explore some of these operations in more detail.
+
+#### Exercises
+1. Using the `diamonds` data, use `?diamonds` for more information on the data, use the `mutate` function to calculate the price per carat. Hint, this operation would involve standardizing the price variable so that all are comparable at 1 carat.
+2. Calculate the rank of the original price variable and the new price variable calculated above using the `min_rank` function. Are there differences in the ranking of the prices? Hint, it may be useful to test if the two ranks are equal to explore this.
+
+
+## Examples with `summarise()`
+`summarise` is very similar to the `mutate` function, except instead of adding additional columns to the data, it collapses data down to a single row. For instance, doing the same operation as the example with `mutate` above:
+
+```{r summarise}
+congress_2 <- mutate(congress_age, 
+       democrat = ifelse(party == 'D', 1, 0)
+       )
+
+summarise(congress_2, 
+          num_democrat = sum(democrat)
+          )
+```
+
+Notice now, instead of repeating the same value for all the rows as with `mutate`, `summarise` collapsed the data into a single numeric summary. Normally this is not a very interesting data activity, however, used in tandem with another function, `group_by`, interesting summary statistics can be calculated. 
+
+Suppose we were interested in calculating the number of democrats in each congress. This can be achieved with similar code to above, but first by grouping the data as follows:
+
+```{r group_by}
+congress_grp <- group_by(congress_2, congress)
+
+summarise(congress_grp, 
+          num_democrat = sum(democrat),
+          total = n(),
+          prop_democrat = num_democrat / total
+)
+```
+
+Notice above, the use of the `group_by` function to group the data first by congress. Then this new grouped data is passed to the `summarise` command. As you can see from the output, the operations performed with the `summarise` function are done for each unique level of the congress variable. You could now easily plot these to see the trend in proportion of democrats has changed over time.
+
+```{r trend}
+library(ggplot2)
+num_dem <- summarise(congress_grp, 
+                     num_democrat = sum(democrat),
+                     total = n(),
+                     prop_democrat = num_democrat / total
+)
+ggplot(num_dem, aes(x = congress, y = prop_democrat)) + 
+  geom_line()
+```
+
+#### Exercises
+1. Suppose we wanted to calculate the number and proportion of republicans instead of democrats, assuming these are the only two parties, edit the `summarise` command above to calculate these values. 
+2. Suppose instead of using `sum(democrat)` above, we used `mean(democrat)`, what does this value return? Why does it return this value?
+
+### Extending `group_by()` in other places
+The `group_by` function is also useful with the `mutate` function and works in a similar way as `summarise` above. For example, if we wanted to keep the values calculated above in the original data, we could use `mutate` instead of `summarise`. This would look like the following:
+
+```{r mutate_group}
+mutate(congress_grp, 
+       num_democrat = sum(democrat),
+       total = n(),
+       prop_democrat = num_democrat / total
+)
+```
+
+### Useful summary functions
+There are many useful summary functions, many of which we will explore in more detail in week 4 of the course during exploratory data analysis (EDA). However, I want to show a few here with the `summarise` function to ease you in. Suppose for instance we were interested in the knowing the youngest and oldest member of congress for each congress. There are actually two ways of doing this, one is using the `min` and `max` functions on the grouped data.
+
+```{r young_old}
+summarise(congress_grp,
+          youngest = min(age),
+          oldest = max(age)
+)
+```
+This could also be done by using the `first` and `last` functions after arranging the data:
+```{r young_old2}
+summarise(arrange(congress_grp, age),
+          youngest = first(age),
+          oldest = last(age)
+)
+```
+
+This goes to show that there are commonly many different ways to calculate descriptive statistics. I would argue two strong virtues when writing code is to make it as clear, expressive, and ensure accuracy. Speed and grace in writing code can come later.
+
+#### Exercises
+1. For each congress, calculate a summary using the following command: `n_distinct(state)`. What does this value return?
+2. What happens when you use a logical expression within a `sum` function call? For example, what do you get in a summarise when you do: `sum(age > 75)`?
+3. What happens when you try to use `sum` or `mean` on the variable incumbent?
+
+## Chaining together multiple operations
+Now that you have seen all of the basic `dplyr` data manipulation verbs, it is useful to chain these together to create more complex operations. So far, I have shown you how to do it by saving intermediate steps, for example, saving the grouped data after using the `group_by` function. In many instances, these intermediate steps are not useful to us. In these cases you can chain operations together. 
+
+Suppose we are interested in calculating the proportion of democrats for each chamber of congress, but only since the 100th congress? There are two ways to do this, the difficult to read and the easier to read. I first shown the difficult to read.
+
+```{r chain_difficult}
+summarise(
+  group_by(
+    mutate(
+      filter(
+        congress_age, congress >= 100
+      ), 
+      democrat = ifelse(party == 'D', 1, 0)
+    ),
+    congress, chamber
+  ),
+  num_democrat = sum(democrat),
+  total = n(),
+  prop_democrat = num_democrat / total
+)
+```
+
+How difficult do you find the code above to read? This is valid R code, but the first operation done is nested in the middle (it is the `filter` function that is run first). This makes for difficult code to debug and write in my opinion. In my opinion, the better way to write code is through the pipe operator, `%>%`. The same code above can be achieved with the following much easier to read code:
+
+```{r pipe}
+congress_age %>%
+  filter(congress >= 100) %>%
+  mutate(democrat = ifelse(party == 'D', 1, 0)) %>%
+  group_by(congress, chamber) %>%
+  summarise(
+    num_democrat = sum(democrat),
+    total = n(),
+    prop_democrat = num_democrat / total
+  )
+```
+
+The pipe allows for more readable code by humans and progresses from top to bottom, left to right. The best word to substitute when translating the `%>%` code above is 'then'. So the code above says, using the `congress_age` data, then `filter`, then `mutate`, then `group_by`, then `summarise`. 
+
+This is much easier to read and follow the chain of commands. I highly recommend using the pipe in your code. For more details on what is actually happening, the R for Data Science book has a good explanation in Section 5.6.1.
+
+
+#### Exercises
+1. Look at the following nested code and determine what is being done. Then translate this code to use the pipe operator.
+```{r code_pipe_examp, eval = FALSE}
+summarise(
+  group_by(
+    mutate(
+      filter(
+        diamonds, 
+        color %in% c('D', 'E', 'F') & cut %in% c('Fair', 'Good', 'Very Good')
+      ),
+      f_color = ifelse(color == 'F', 1, 0),
+      vg_cut = ifelse(cut == 'Very Good', 1, 0)
+    ),
+    clarity
+  ),
+  avg = mean(carat),
+  sd = sd(carat),
+  avg_p = mean(price),
+  num = n(),
+  summary_f_color = mean(f_color),
+  summary_vg_cut = mean(vg_cut)
+)
+```
+
+
+
+

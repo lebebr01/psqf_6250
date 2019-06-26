@@ -1,0 +1,107 @@
+---
+title:  "Model Assumptions"
+author: "Brandon LeBeau"
+date:   "March 6, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+I want to spend a little bit of time talking about model assumptions. These are important and should be checked for any analysis. The following packages will be used for this set of notes.
+
+```{r packages, message = FALSE}
+library(modelr)
+library(broom)
+library(forcats)
+library(tidyverse)
+```
+
+We are also going to use this model from the advanced model section to explore model assumptions.
+
+```{r model}
+heights2 <- heights %>%
+  mutate(
+    marital_comb = fct_recode(marital,
+          'Other' = 'separated',
+          'Other' = 'widowed'
+    )
+  )
+
+afqt_mod <- lm(afqt ~ marital_comb + height, data = heights2)
+summary(afqt_mod)
+```
+
+## `plot` function with model object
+One of the nicest features when model building within R, is that many diagnostic plots are very accessible using the `plot` function. For example:
+
+```{r diag_plots}
+plot(afqt_mod)
+```
+
+These plots are shown one at a time in an interactive R session, but allow you to check many common assumptions such as normal residuals, linearity, homogeneity of variance, and even leverage.
+
+You can see from these figures that there is quite a bit to be desired from our model. First, the residuals are not normally distributed (very heavy tails) and more problematic is that the residuals have a trend to them. This suggests that we are missing an important variable in the model.
+
+Suppose we add some additional variables to the model keeping the model additive. Note, I am also mean centering many of the continuous variables to ease interpretation slightly.
+
+```{r alt_model}
+heights2 <- heights2 %>%
+  mutate(income2 = ifelse(income == 0, .001, income),
+         height2 = height - mean(height, na.rm = TRUE),
+         education2 = education - mean(education, na.rm = TRUE),
+         weight2 = weight - mean(weight, na.rm = TRUE),
+         log_income = log(income2))
+afqt_alt <- lm(afqt ~ marital_comb + height2 + education2 + 
+                 log_income + weight2, data = heights2)
+summary(afqt_alt)
+```
+
+```{r diag2}
+plot(afqt_alt)
+```
+
+We could continue to model this variable by including additional predictors or interactions between our current predictors to attempt to remove this strong trend in the residuals. I'm going to stop here however and move on to another topic.
+
+## Exploring individual residuals
+Evaluating all of the residuals in a single step using the `plot` function can be useful initially to explore model quality. However, eventually it is useful to explore residuals for specific values to explore why these are large.
+
+There are a few options to do this, one uses the broom package, the other uses the modelr package. I show both below.
+
+```{r residuals}
+aug_afqt <- augment(afqt_alt)
+aug_afqt
+```
+
+```{r}
+height_resid <- heights2 %>%
+  add_residuals(afqt_alt) %>%
+  add_predictions(afqt_alt)
+height_resid
+```
+
+The benefit to the `augment` function from the broom package is that it includes more information. The main benefit fo the `add_residuals` function from the modelr pacakge is that it includes all of the original data, not just those variables included in the final model. Therefore if you are fitting a model and want to explore trends in residuals based on other data characteristics not currently in the model, using the `add_residuals` function would likely be better for this use.
+
+### Filtering and Plotting Residuals
+Now that we have these in a data frame, we could easily plot or filter residuals to explore cases in which the model is not adequatly fitting the dependent variable. For example, maybe we want to explore residuals greater than 50 in absolute value. This can easily be done with dplyr and the `filter` function.
+
+```{r filter_resid}
+filter(height_resid, abs(resid) > 50)
+```
+
+You can also plot residuals directly or compared to other predictors.
+
+```{r hist_resid}
+ggplot(height_resid, aes(resid)) + 
+  geom_histogram() + 
+  theme_bw() + 
+  xlab("Residuals")
+```
+
+```{r residual_predictor}
+ggplot(height_resid, aes(resid, education2)) + 
+  geom_point(size = 3) + 
+  geom_smooth(size = 1, se = FALSE) + 
+  xlab("Residuals") + 
+  ylab("Education (mean centered)")
+```
+

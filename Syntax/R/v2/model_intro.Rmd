@@ -1,0 +1,202 @@
+---
+title:  "Introduction to Models"
+author: "Brandon LeBeau"
+date:   "February 20, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+This section of the notes is going to introduce you into the world of models in R. For the most part, we are going to stick with simple linear models and build up the various models using one function `lm`. The `lm` function is an extremely powerful function that can accomodate many different models in a single framework.
+
+This section of notes is going to make use of four R packages:
+```{r setup, message = FALSE}
+library(tidyverse)
+library(modelr)
+# install.packages("broom")
+library(broom)
+library(fivethirtyeight)
+```
+
+## Simple Linear Regression
+First we need some data. We are going to explore the data from the `fivethirtyeight` package called `fandango`. Here are the first few rows:
+
+```{r fandango_data}
+fandango
+```
+
+These data have `r nrow(fandango)` rows and `r ncol(fandango)` columns. 
+
+Suppose we were interested in exploring the relationship between ratings from rottentomatoes and metacritic. Note, we will not use the user rating for this exploration. A natural first step may be to look at a scatterplot of these data to explore the shape of the relationship.
+
+```{r scatter}
+ggplot(fandango, aes(rottentomatoes, metacritic)) + 
+  theme_bw() + 
+  geom_point(size = 3)
+```
+
+To better explore the relationship, including a smoother can be useful:
+
+```{r smoother}
+ggplot(fandango, aes(rottentomatoes, metacritic)) + 
+  theme_bw() + 
+  geom_point(size = 3) + 
+  geom_smooth(method = 'loess', se = FALSE, size = 1.5)
+```
+
+It may also be useful to calculate a correlation coefficient between these two variables.
+```{r cor}
+with(fandango, cor(rottentomatoes, metacritic))
+```
+
+### Fit Linear Regression
+Now we will attempt to fit a model to these data. Namely, the relationship appears to be mostly linear and suppose we wished to predict the metacritic review score with the rotten tomatoes score. To do this, we will use the `lm` function and the `~` that we used with `facet_wrap` and `facet_grid`. 
+
+More concretely, suppose we wished to fit the model: 
+$$ metacritic_{i} = b_{0} + b_{1} rottentomatoes_{i} + \epsilon_{i} $$
+
+In this model, $metacritic_{i}$ is the dependent or response variable and $rottentomatoes_{i}$ is the independent, predictor, or covariate. In many traditional statistics courses, $metacritic_{i}$ would be represented with $Y$ and $rottentomatoes_{i}$ would be represented with $X$. It is often more descriptive to represent these with their variable names instead of $Y$ or $X$.
+
+To fit this model, we simply need to replace the $=$ sign found in the equation above with the `~`. For example, the equation above would turn into:
+
+```{r lm_basic}
+meta_mod <- lm(metacritic ~ rottentomatoes, data = fandango)
+```
+
+To see output from the model, we can take two approaches. One is to use `summary` and another is to use the `tidy` function from the broom package. I show each below in turn.
+
+```{r summary}
+summary(meta_mod)
+```
+
+```{r broom}
+tidy(meta_mod)
+```
+
+With the broom package, the results are reported in a tidier framework. We will see additional useful functions using the broom package later on.
+
+You can also directly request confidence intervals with the `tidy` function:
+
+```{r broom_conf}
+tidy(meta_mod, conf.int = TRUE)
+```
+
+
+#### Exercises
+1. Fit a new model using the `fandango` data that attempts to explain the metacritic ratings with the imdb rating.
+2. Fit another model using the `fandango` data that attempts to explain the metacritic ratings with the fandango_ratingvalue scores.
+3. Exploring the predictors of these two new models with the one fitted above with the rottentomatoes scores, which rating score best helps us predict the metacritic scores?
+
+### Workings Behind `lm` function
+To see what the `lm` function is doing behind the scenes, we will use the `model_matrix` function from the modelr package. For example, from the model above:
+
+```{r model_matrix}
+model_matrix(fandango, metacritic ~ rottentomatoes)
+```
+
+This is often referred to as the design matrix in statistics text books and is one of the matrices that are used by `lm` to calculate the estimated parameters from above. Notice that is automatically included the intercept, normally this is of interest, if it is not, we can omit it directly by including a `-1` in the formula. For example:
+
+```{r no_int_model_matrix}
+model_matrix(fandango, metacritic ~ rottentomatoes - 1)
+tidy(lm(metacritic ~ rottentomatoes - 1, data = fandango))
+```
+
+You need to be careful with this syntax as this is commonly not is what is desired when fitting a linear model.
+
+### Categorical Predictors
+Suppose we were interested in the following research question:
+
+- To what extent are there average differences in movie ratings between rottentomatoes and metacritic?
+
+To answer this research question, we would need to transform our data to great a group variable and a rating variable.
+
+```{r tidy_rating}
+meta_rotten <- fandango %>%
+  select(film, year, rottentomatoes, metacritic) %>%
+  gather(group, rating, rottentomatoes, metacritic)
+meta_rotten
+```
+
+Now we can work with this data to answer the question from above. More specifically, our dependent variable will be the rating variable and the independent variable will be the group (categorical) variable. This can be fitted within a linear model as follows:
+
+```{r categorical_model}
+tidy(lm(rating ~ factor(group), data = meta_rotten))
+```
+
+To see exactly what is happening, `model_matrix` may be useful. First I am going to arrange the data by the films in alphabetical order.
+
+```{r categorical_model_matrix}
+meta_rotten %>%
+  arrange(film)
+meta_rotten %>%
+  arrange(film) %>%
+  model_matrix(rating ~ factor(group))
+```
+
+You may be more familiar with using a t-test for this type of design. We can replicate the results above with a t-test using the `t.test` function.
+
+```{r t_test}
+t.test(rating ~ factor(group), data = meta_rotten, 
+       var.equal = TRUE)
+```
+
+
+#### Exercises
+1. Compute descriptive means using the `meta_rotten` transformed data from above by the group variable. Do these means appear to be descriptively different?
+2. How do these means relate to the parameters estimated from the model above?
+
+### Evaulating Model fit
+There are many ways to evaluate model fit. Many of these are available using the `summary` function.
+
+```{r summary_modelfit}
+summary(lm(rating ~ factor(group), data = meta_rotten))
+```
+
+The unfortunate part of this is the fact that these are more difficult to pull out of the table programmatically (i.e. in a reproducible workflow). This is where the broom package helps with the use of the `glance` function.
+
+```{r glance}
+glance(lm(rating ~ factor(group), data = meta_rotten))
+```
+
+These are now in a more tidy data frame and if you have multiple models in an exploratory analysis, these could then be much easier compared and combined programmatically to come to a final model.
+
+Another useful function from the broom package is `augment`. This function will add additional information to the original data such as residuals, fitted (predicted) values, and other diagnostic statistics.
+
+```{r augment}
+diagnostic <- augment(lm(rating ~ factor(group), data = meta_rotten))
+diagnostic
+```
+
+These could then be plotted to explore more information about model fit. For example a histogram of the residuals (or standardized residuals) are often useful.
+
+```{r hist_resid}
+ggplot(diagnostic, aes(.resid)) + 
+  geom_histogram(binwidth = 5, color = 'white') + 
+  theme_bw()
+```
+
+For this model, boxplots of residuals by the two groups can also be informative:
+
+```{r boxplot_resid}
+ggplot(diagnostic, aes(factor.group., .resid)) + 
+  geom_boxplot() + 
+  geom_jitter() + 
+  coord_flip() +
+  theme_bw()
+```
+
+We will explore more details on predicted or fitted values later.
+
+Lastly, the `augment` function can be useful, however I personally do not like the naming convention used by the function. I want to point you to two additional functions from the modelr package that can be useful for predicted (`add_predictions`) and residual values (`add_residuals`).
+
+For example, to add the residuals to the original data:
+
+```{r add_residuals}
+meta_rotten %>%
+  add_residuals(lm(rating ~ factor(group), data = meta_rotten))
+```
+
+
+#### Exercises
+1. Fit a new model using the `fandango` data that attempts to explain the metacritic ratings with the imdb rating. Explore the distribution of residuals. Does there appear to be problems with these residuals?
+2. Using the model from #1, create a scatterplot that displays the residuals by the predictor variable. Are there problems with this plot that we should be concerned with?

@@ -1,0 +1,362 @@
+---
+title:  "Creating User Functions"
+author: "Brandon LeBeau"
+date:   ""
+output:
+  html_notebook: default
+  html_document: default
+---
+
+## When to create a function
+Functions can be particularly useful when you are duplicating significant portions of your code. For example, perhaps you want to standardize various quantitative variables by subtracting each variable by the mean and dividing by the standard deviation. Below is the mathematics behind this operation.
+
+$$
+standardizedvar = \frac{var - mean(var)}{sd(var)}
+$$
+
+Let's use the midwest data that comes with the tidyverse to explore what code like this would look like. 
+
+```{r load-package}
+library(tidyverse)
+midwest
+```
+
+Suppose we wanted to standardize using the above equation, for the variables, `poptotal`, `popdensity`, `popadults`, and `perccollege`. Let's do the computation for the variable `poptotal` first. 
+
+```{r stand-poptotal}
+midwest %>%
+  mutate(stand_poptotal = (poptotal - mean(poptotal)) / sd(poptotal)) %>%
+  select(poptotal, stand_poptotal)
+```
+
+How would we move alter the code to do the computation for subsequent columns? You could rewrite the code, but I would likely copy and paste the code and adapt the pieces to the new column. Here I did it for the additional three variables.
+
+```{r stand-vars}
+midwest %>%
+  mutate(stand_poptotal = (poptotal - mean(poptotal)) / sd(poptotal),
+         stand_popdensity = (popdensity - mean(popdensity)) / sd(popdensity),
+         stand_popadults = (popadults - mean(popadults)) / sd(popadults),
+         stand_percollege = (percollege - mean(poptotal)) / sd(percollege)) %>%
+  select(poptotal, popdensity, popadults, percollege, 
+         stand_poptotal, stand_popdensity, stand_popadults, stand_percollege)
+```
+
+Explore the code, notice any problems? When I copied and pasted, I missed changing the mean calculation for the `percollege` variable. This issue can be particularly difficult to debug given that there are no errors in the code. We could save some code duplication by writing our own function. This can save on errors in copy and pasting or errors on data entry. Let's write a function that implements this, focusing less on function specifics as that will come later.
+
+```{r stand-function}
+standardize <- function(x) {
+  mean_var <- mean(x)
+  sd_var <- sd(x)
+  
+  (x - mean_var) / sd_var
+}
+```
+
+We could then use this function, `standardize()` inside of the `mutate()` function.
+
+```{r use-function}
+midwest %>%
+  mutate(stand_poptotal = standardize(poptotal),
+         stand_popdensity = standardize(popdensity),
+         stand_popadults = standardize(popadults),
+         stand_percollege = standardize(percollege)) %>%
+  select(poptotal, popdensity, popadults, percollege, 
+         stand_poptotal, stand_popdensity, stand_popadults, stand_percollege)
+```
+ Notice now we remove some, but not all of the duplication. Next week we will explore iteration in more detail that can remove this level of duplication. 
+ 
+#### Your Turn 
+1. There is an R function, `scale()`, that does this standardization. Use this to recreate the standardization above. 
+2. Will the `standardize()` function above work when there are missing values? How could the function be adapted to work with missing values?
+
+### Conditional `summarise()` or `mutate()` statements
+One thing I want to show briefly is if you are attempting to apply a particular function for data verification and there is a function already defined in R, `summarise_if()` or `mutate_if()` can be particularly useful. Take an example of wanting to calculate the mean of each numeric column, but the data has a mix of numeric and categorical variables. You could write multiple computations within `mutate()` or `summarise()`, but `summarise_if()` and `mutate_if()` can be particularly useful. Below is an example of this strategy with the mpg data from dplyr.
+
+```{r mpg-data}
+mpg
+```
+Let's calculate the mean of each numeric column with `summarise_if()`. 
+```{r summarise-if}
+summarise_if(mpg, is.numeric, mean, na.rm = TRUE)
+```
+
+The `mutate_if()` function could be used if these values wanted to be saved to the data. Additional level of detail could be added by using `summarise_if()` and `group_by()` in tandem. 
+
+```{r group-summarise-if}
+mpg %>%
+  group_by(manufacturer) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+```
+
+These can be great, simple ways to explore the data at a first inspection. 
+
+## Function basics
+Every function has three basic components, a function name, a function definition (i.e. arguments), and the function specifics/computations or function body. The following code chunk attempts to show these basics. 
+
+```{r function-basics, eval = FALSE}
+function_name <- function(argument1, argument2) {
+  
+  function_body
+  
+}
+```
+
+The `function()` function is used to define a new function. Inside the parentheses of this are where the function arguments are defined. The arguments can contain default values or can be unspecified, more details on this later. The function body is where the details of what the function is going to do is contained. From the previous function we created, the computation to standardize a variable was perfomed within the function body. Finally, the function name is specified just like naming any other object. 
+
+### Picking a Function Name
+Functions names are an important step to think about for a bit at the beginning. A few general heuristics are useful to keep in mind when thinking about a function name. 
+
+1. Do not use a name from a function already defined within R. For example, avoid things like: `mean`, `c`, `t.test`, etc.
+2. Create a semi-descriptive name that isn't too detailed. For example, function names like `f`, `s`, `tr`, etc are not descriptive enough to be useful. Also, better to avoid particularly long names like `standardize_variable`. 
+3. If you define multiple functions, be consistent in their naming convention. If you use underscores, use them for all of your function names. If you like dots or titleCase be consistent. 
+
+### Function Arguments
+Function arguments need to be named and I would recommend using similar heuristics to picking a function name. The only element that can be ignored is the first, you are able to reuse function arguments across functions. This would actually be encouraged across functions that are similar to ensure that the function arguments work similarly across the function. 
+
+#### Arguments with Default Values
+Arguments in R can either have default values or can be left without default values. The big distinction to keep in mind when thinking about this is whether it is an argument that users should explicitly specify everytime (i.e. major user argument) or is an argument that users may only change on occasion and there is an obvious default that makes sense. For the former situation, I would only define the argument name with no default compared to the latter I would typically define a default value. 
+
+Consider the `standardize()` function we defined previously.
+
+```{r standardize-revisit}
+standardize <- function(x) {
+  mean_var <- mean(x)
+  sd_var <- sd(x)
+  
+  (x - mean_var) / sd_var
+}
+```
+
+Notice that the function argument, `x` here is just named it does not have a default value. This was the case where this argument was specified to be the variable to be standardized, therefore having a default value did not make sense. The first function arguments are commonly do not have default values.
+
+In a "Your Turn" section earlier, it was asked if this function would work with missing data. The short answer, is it would not, because the mean and sd would not be able to be calculated with missing values. For example, using the `nycflights13` package used earlier, we could show that when missing data are present, the function breaks (i.e. produces NA values). 
+
+```{r}
+library(nycflights13)
+
+flights %>%
+  mutate(stand_arr_delay = standardize(arr_delay)) %>%
+  select(arr_delay, stand_arr_delay)
+```
+
+
+We could adapt this to include another function argument, that deals with how missing data should be handled.
+
+```{r standardize-missing}
+standardize <- function(x, na.rm = TRUE) {
+  mean_var <- mean(x, na.rm = na.rm)
+  sd_var <- sd(x, na.rm = na.rm)
+  
+  (x - mean_var) / sd_var
+}
+
+flights %>%
+  mutate(stand_arr_delay = standardize(arr_delay)) %>%
+  select(arr_delay, stand_arr_delay)
+```
+
+This function can now handle missing values through the argument, `na.rm`, which defaults to the value of `TRUE` and since the default value is `TRUE`, the missing data are automatically removed when computing the mean and sd. We could change the default value explicitly when we call the function.
+
+```{r standardize-false}
+flights %>%
+  mutate(stand_arr_delay = standardize(arr_delay, na.rm = FALSE)) %>%
+  select(arr_delay, stand_arr_delay)
+```
+
+Note here I used the same argument name, `na.rm`, as is found within the mean and sd functions by default. This was to ensure that they are familiar to many users already comfortable with these function names. 
+
+Function arguments can also be specified as text strings, that will be discussed in more detail in the next section.
+
+## Conditional Functions
+Conditional branching in functions are common, particularly when the functions attempt to do a few different things based on what the input values are. The general format for creating functions that use conditional logic are as follows:
+
+```{r function-conditions, eval = FALSE}
+if(some_condition) {
+  # do something
+} else {
+  # do something else
+}
+```
+This is an example of a branch with two different computations. For example, we could create a function that first calculates the skewness of a variable, if it is skewed returns the median otherwise computes the mean. 
+
+```{r descrip-func}
+library(e1071)
+mean_median <- function(variable, na.rm = TRUE) {
+  var_skew <- skewness(variable, na.rm = na.rm)
+  
+  if(abs(var_skew) > 2) {
+    descriptive <- median(variable, na.rm = na.rm)
+  } else {
+    descriptive <- mean(variable, na.rm = na.rm)
+  }
+  data.frame(skewness = var_skew, 
+             descriptive = descriptive)
+}
+```
+
+We could then use this function to calculate the statistic of interest for a few different variables. 
+
+```{r calculate-desc}
+mean_median(flights$arr_delay)
+mean_median(gss_cat$tvhours)
+mean_median(diamonds$price)
+```
+
+Note here, that you need to name the variable explicitly, you can't just do the following:
+
+```{r calculate-error, eval = FALSE}
+mean_median(arr_delay)
+```
+
+This is happening because the function is unable to find the variable, `arr_delay` as it does not know to look in the flights data. To rectify this you need to use the `$` notation shown above or other ways of telling the function which data to use to find the correct variable (e.g., `with()` would also be an option). 
+
+#### Conditionals based on function arguments
+You can also control flow of a function based on the arguments. For example, we could rewrite the `mean_median()` function to include another argument that lets users specify whether they want the mean or median computed rather than basing this decision on the skewness. This may look as follows.
+
+```{r robust-stat}
+mean_median_arg <- function(variable, statistic = 'mean', na.rm = TRUE,
+                            skewness = FALSE) {
+  
+  if(statistic == 'mean') {
+    descriptive <- mean(variable, na.rm = na.rm)
+  } else {
+    descriptive <- median(variable, na.rm = na.rm)
+  }
+  
+  if(skewness) {
+    skewness_stat <- skewness(variable, na.rm = na.rm)
+  } else {
+    skewness_stat <- NA
+  }
+  data.frame(skewness_stat, descriptive)
+}
+```
+
+This function can now be tested using the variables we defined before:
+
+```{r mean-arg}
+mean_median_arg(flights$arr_delay)
+```
+
+Notice by default, the skewness is not calculated as it is set to `FALSE` by default. The skewness could be returned by setting `skewness = TRUE`. The mean is also calculated by default, due to the default value of setting `statistic = 'mean'`. If we wanted the median instead, we can add this argument.
+
+```{r median-arg}
+mean_median_arg(flights$arr_delay, statistic = 'median', skewness = TRUE)
+```
+
+Note, the way the function was written, specifying anything other than `statistic = 'mean'` would compute the median. 
+
+```{r other-median}
+mean_median_arg(flights$arr_delay, statistic = 'anything', skewness = TRUE)
+```
+
+This behavior is not ideal, but may be okay for simple functions. If it would be a problem, some additional structure inside the function to test for the specific arguments that are possible could be defined and an error could be returned if the arguments specified are not appropriate.
+
+### Larger conditional branching
+Conditinoal branching can take on more than two levels as well. The general structure using nested if statements would look like the following.
+
+```{r nested-ifs, eval = FALSE}
+if(some_condition) {
+  # do something computationally
+} else if (another_condition) {
+  # do another computation
+} else if (yet_another_condition) {
+  # do yet another computation
+} else {
+  # final computation
+}
+```
+In the example above, there are four different paths that the function can take depending on the function input. Commonly, this behavior would use a function argument defined as a character string to navigate through the different branches.
+
+For example, explore the following function.
+
+```{r branch-func}
+desc_stats <- function(variable, 
+                       statistic = c('sd', 'mean', 'median', 'quantile')) {
+  
+  if(statistic == 'sd') {
+    sd(variable, na.rm = TRUE)
+  } else if(statistic == 'mean') {
+    mean(variable, na.rm = TRUE)
+  } else if(statistic == 'median') {
+    median(variable, na.rm = TRUE)
+  } else {
+    quantile(variable, na.rm = TRUE)
+  }
+}
+```
+
+We can then see what is returned for this function with different arguments.
+
+```{r desc-returns}
+desc_stats(flights$arr_delay, statistic = 'sd')
+desc_stats(flights$arr_delay, statistic = 'mean')
+desc_stats(flights$arr_delay, statistic = 'median')
+desc_stats(flights$arr_delay, statistic = 'quantile')
+```
+
+Note, when defined this way, the statistic argument must always be specified, but when including the argument values in the function definition, the function can be more specific.
+
+#### Using `switch()` function
+This behavior can make functions difficult to read and debug, therefore using the `switch()` function can be a nice alternative if there are many different values for a function and each just calls a single function. We can redefine the previous function using `switch()`. For the `switch()` function, the argument name is passed as the first argument and subsequent arguments to `switch()` are function calls based on the text of the arguments (shown before the equal sign) followed by the function or computation to perform.
+
+```{r switch-func}
+desc_stats_sw <- function(variable, 
+                          statistic = c('sd', 'mean', 'median', 'quantile')) {
+  
+  switch(statistic,
+         sd = sd(variable, na.rm = TRUE),
+         mean = mean(variable, na.rm = TRUE),
+         median = median(variable, na.rm = TRUE),
+         quantile = quantile(variable, na.rm = TRUE),
+         stop("Unknown statistics argument"))
+}
+```
+
+Then to test the function.
+
+```{r test-switch}
+desc_stats_sw(flights$arr_delay, statistic = 'sd')
+desc_stats_sw(flights$arr_delay, statistic = 'mean')
+desc_stats_sw(flights$arr_delay, statistic = 'median')
+desc_stats_sw(flights$arr_delay, statistic = 'quantile')
+desc_stats_sw(flights$arr_delay, statistic = 'variance')
+```
+
+Notice that now I also flagged the function to throw an error if an argument name does not match the `statistic` argument definition. 
+
+
+## Thinking about Returned Values
+I only want to touch briefly on return values. These are commonly found at the end of the function and I usually just print them out to the console. Here I show the first function, `standardize()` for reference. Notice that the last line of the function is the resulting statistic being printed. That is, the `(x - mean_var) / sd_var` was not saved to an object therefore would print directly to the console. This is the return value for the function. 
+
+```{r standardize-revisit2, eval = FALSE}
+standardize <- function(x) {
+  mean_var <- mean(x)
+  sd_var <- sd(x)
+  
+  (x - mean_var) / sd_var
+}
+```
+
+### The `return()` function
+The `return()` function is useful to be explicit about the value that is returned from the function. I use it when I have more than one returned value that occur at different points in the function definition. If the value I return is the last line of code, I don't explicitly use return, however if there is another value earlier in the function that gets returned, I'm more likely to use `return()`. 
+
+Here is an example of what explicit return functions would look like using a function we have already used and defined.
+
+```{r explicit-return}
+desc_stats <- function(variable, 
+                       statistic = c('sd', 'mean', 'median', 'quantile')) {
+  
+  if(statistic == 'sd') {
+    return(sd(variable, na.rm = TRUE))
+  } else if(statistic == 'mean') {
+    return(mean(variable, na.rm = TRUE))
+  } else if(statistic == 'median') {
+    return(median(variable, na.rm = TRUE))
+  } else {
+    return(quantile(variable, na.rm = TRUE))
+  }
+}
+```
+
+The function would behave the same as before, just now the values that could be returned are wrapped in the `return()` function. I leave it to you to test the function to ensure that the values are indeed the same. 

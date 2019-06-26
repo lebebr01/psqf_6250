@@ -1,0 +1,219 @@
+---
+title:  "Building Upon Linear Models"
+author: "Brandon LeBeau"
+date:   "February 27, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+The last week has focused on building simple linear models with a single predictor. This week will evaluate these models and build them up with more complexity. Particularly, this week will focus on ways to build models with predictors that have more than two categories, alternative ways to code categorical predictors, mixing categorical and quantitative variables, and interactions.
+
+This section of notes will use the following packages.
+
+```{r setup, message = FALSE}
+library(tidyverse)
+library(modelr)
+library(broom)
+library(fivethirtyeight)
+library(forcats)
+```
+
+## More than two categorical levels
+Last week we explored a linear model framework for a two sample t-test (and the homework has you explore fitting a one-sample t-test in a linear model framework). I now want to generalize this idea to more than two categorical levels. It is traditional to think about these types of models as analysis of variance (ANOVA) models, however, the same model can be fitted in a linear model framework as well. 
+
+For this set of notes, we are going to make use of the gss_cat data found in the forcats package. Below are the first few rows of the data:
+
+```{r gss_cat}
+gss_cat
+```
+
+Suppose we were interested in exploring the relationship between the marital status of an individual and how much tv they watch. For example, perhaps married couples watch more tv compared to those that are single or never married. To get an idea of the categories in the marital variable, we could use the `count` function within dplyr.
+
+```{r count_marital}
+gss_cat %>%
+  count(marital)
+```
+
+You'll notice that there a few responses of "No Answer" and we may wish to treat these as missing values. This can be done with the `fct_recode` function as follows:
+
+```{r marital_recode}
+gss_cat <- gss_cat %>%
+  mutate(marital_miss = fct_recode(marital,
+    NULL = 'No answer'
+  ))
+gss_cat %>%
+  count(marital_miss)
+```
+
+We can now fit the model to this new data using the `lm` function. 
+
+```{r anova_mod}
+anova_mod <- lm(tvhours ~ marital_miss, data = gss_cat)
+summary(anova_mod)
+```
+
+To explore what the `lm` function is doing internally, the design matrix is a natural way to do this.
+
+```{r anova_design}
+model_matrix(gss_cat, tvhours ~ marital_miss)
+```
+
+Writing out this model with equations, the model looks like this:
+$$
+tvhours_{i} = \beta_{0} + \beta_{1} Separated_{i} + \beta_{2} Divorced_{I} + \beta_{3} Widowed_{i} + \beta_{4} Married_{i} + \epsilon_{i}
+$$
+
+If you are more familiar with ANOVA terminology, you can get an ANOVA table using the `anova` function on the model object.
+
+```{r anova_output}
+anova(anova_mod)
+```
+
+Here you'll notice that the F statistic is the same from the `lm` and `anova` functions showing that these are equivalent model calls.
+
+#### Exercises
+1. Using the martial_miss variable created above, what are the sample means of the five groups?
+2. How do these sample means relate back to the parameters estimates shown above?
+3. How could you visualize these models results? Attempt to create a visualization that captures the model results above.
+
+### Adjusting the reference group
+It is often of interest to adjust the reference group to make the intercept represent a specific group of interest. There are two approaches to take for this approach. The first I will show is using the forcats package to change the order of the levels of the variable. 
+
+Suppose for example, we wish to make the widowed category the reference group. This is the job of `fct_relevel` from the forcats package.
+
+```{r widow_first}
+gss_cat <- gss_cat %>%
+  mutate(marital_m_widow = fct_relevel(
+    marital_miss,
+    'Widowed'
+  ))
+levels(gss_cat$marital_miss)
+levels(gss_cat$marital_m_widow)
+```
+
+You'll notice that in the new variable, the widowed category was moved to the beginning and the remaining order was not changed. We can now fit a new model with this newly releveled factor variable.
+
+```{r anova_widow}
+summary(lm(tvhours ~ marital_m_widow, data = gss_cat))
+```
+
+The second approach to modifying which group represents the reference group would be to create the indicator (dummy) variables manually. The logic follows from the design matrix above, namely that each variable should have a value of 1 if the marital status equals a specific category or 0 otherwise. For example, this can be created as follows:
+
+```{r manual_dummy}
+gss_cat <- gss_cat %>%
+  mutate(
+    separated = ifelse(marital_miss == 'Separated', 1, 0),
+    never_married = ifelse(marital_miss == 'Never married', 1, 0),
+    divorced = ifelse(marital_miss == 'Divorced', 1, 0),
+    married = ifelse(marital_miss == 'Married', 1, 0)
+  )
+summary(lm(tvhours ~ separated + never_married + divorced + married, 
+           data = gss_cat))
+```
+
+Manually creating the variables has a few advantages, namely that there is a bit more flexibility on how the variables are created, but both approaches lead to the same model.
+
+#### Exercises
+1. Combine the 'Never married' and 'Divorced' categories into one category.
+2. Fit a new model that combines these two categories. Does the model fit differ from the models shown above? Is this surprising?
+
+### Post Hoc Tests
+From the models fitted above, it may be of interest to conduct post hoc tests that compare all pairwise mean differences, particularly as the tests above are all compared to the reference group. This approach will be explored using the multcomp package and with defining linear contrasts.
+
+```{r multcomp, message = FALSE}
+# install.packages("multcomp")
+library(multcomp)
+```
+
+We first need to define linear contrasts based on the levels of the factor variable. For example, using the following model:
+
+```{r contrasts_anova_model}
+gss_cat <- gss_cat %>%
+  mutate(marital_m_widow = fct_recode(marital_m_widow,
+           "Never_married" = "Never married"                           
+  ))
+anova_mod <- lm(tvhours ~ marital_m_widow, data = gss_cat)
+levels(gss_cat$marital_m_widow)
+```
+
+We will use these level values to create linear contrasts that test all pairwise categories.
+
+```{r contrasts}
+my_contrasts <- c("Widowed - Never_married = 0",
+                 "Widowed - Separated = 0",
+                 "Widowed - Divorced = 0",
+                 "Widowed - Married = 0",
+                 "Never_married - Separated = 0",
+                 "Never_married - Divorced = 0",
+                 "Never_married - Married = 0",
+                 "Separated - Divorced = 0",
+                 "Separated - Married = 0",
+                 "Divorced - Married = 0")
+contr_results <- glht(anova_mod, 
+                      linfct = mcp(marital_m_widow = my_contrasts))
+summary(contr_results)
+```
+
+You can also specify different adjustment methods, such as the Benjamin-Hochberg method.
+
+```{r adjust_p}
+summary(contr_results, test = adjusted("BH"))
+```
+
+Although defining the linear contrasts manually is more flexible, for simple models, the multiple comparisons can be generated a bit more simply. 
+
+```{r simple_contrasts}
+summary(glht(anova_mod, linfct = mcp(marital_m_widow = "Tukey")), 
+        test = adjusted("BH"))
+```
+
+You can also generate simultaneous confidence intervals:
+
+```{r confint}
+ci <- confint(summary(glht(anova_mod, linfct = mcp(marital_m_widow = "Tukey")),
+                test = adjusted("BH")))
+ci
+```
+
+These could then be visulized directly.
+
+```{r}
+SCI = data.frame(
+  Contrast = 1:nrow(ci$confint),   #Contrast number
+  MD = ci$confint[, 1],      #Mean difference
+  LL = ci$confint[, 2],      #Lower limit
+  UL = ci$confint[, 3],      #Upper limit
+  Sig = c("Yes", "No", "Yes", "Yes", 'Yes', 'No', 
+          'Yes', 'Yes', 'Yes', 'Yes'),   #Statistically reliable?
+  Alpha = c(1, .75, 1, 1, 1, .75, 1, 1, 1, 1),     #Transparency value
+  Names = rownames(ci$confint)  # contrast label
+)
+
+# Plot of the simultaneous intervals
+library(ggplot2)
+ggplot(data = SCI, aes(x = Contrast, y = MD, color = Sig)) +
+  geom_point(size = 4) +
+  geom_segment(aes(x = Contrast, xend = Contrast, y = LL, 
+                   yend = UL, alpha = Alpha), lwd = 1.5) +
+  geom_hline(yintercept = 0, lty = "dotted") +
+  scale_color_manual(values = c("Black", "Gold")) +
+  scale_x_continuous(
+    name = "",
+    breaks = 1:10,
+    labels = SCI$Names
+  ) +
+  ylab("Mean Difference") +
+  coord_flip() +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.minor = element_blank(), 
+    panel.grid.major = element_blank() 
+  )
+```
+
+#### Exercises
+1. Fit a model that explores mean differences in tvhours by the party affiliation (partyid variable). Do the means differ?
+2. Using the post-hoc tests, run post-hoc tests to test all pairwise differences.
+

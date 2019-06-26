@@ -1,0 +1,269 @@
+---
+title:  "Advanced Modeling Topics"
+author: "Brandon LeBeau"
+date:   "February 27, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+This section of notes will use the following packages.
+
+```{r setup, message = FALSE}
+library(modelr)
+library(broom)
+library(forcats)
+library(stringr)
+library(tidyverse)
+```
+
+## Interactions
+Interactions are an important modeling concept that can greatly increase model fit, prediction accuracy, and explained variance. Interactions can be difficult to interpret, however, we will explore them in more detail here with particular attention to graphical displays of interactions and also exploring the design matrix for how interactions are included in the model fitting procedure.
+
+We will use the `heights` data from the modelr package to explore interactions. The primary interactions that we will explore are between two (or more) categorical predictors and also the interaction between a categorical predictor and a continuous predictor. Interpretations are similar between two continuous predictors as well.
+
+Here are the first few rows of the data:
+
+```{r heights}
+heights
+```
+
+
+Suppose we were interested in exploring the relationship between sex and afqt (armed forces qualifications test, in percentiles) and if this relationship is moderated by marital status. First, it may be useful to get a baseline to see the relationship between sex and afqt.
+
+```{r sex_model}
+afqt_sex <- lm(afqt ~ sex, data = heights)
+summary(afqt_sex)
+```
+
+Notice that there is a small effect, which is not significant if using an alpha value of 0.05. Also, notice the extremely small r-square value here, this is actually a good finding, we would hope there would be no statistical differences between males and females on this qualifications test. Now lets start adding in marital status. We can do this as follows (Note, I have combined separated and widowed into a single category due to relatively small sample sizes):
+
+```{r sex_marital_model}
+heights <- heights %>%
+  mutate(
+    marital_comb = fct_recode(marital,
+          'Other' = 'separated',
+          'Other' = 'widowed'
+    )
+  )
+afqt_sex_marital <- lm(afqt ~ sex + marital_comb, data = heights)
+summary(afqt_sex_marital)
+```
+
+This model only contains what are often referred to as main effects. Namely, these are only the additive effects of sex and marital variables. To get a sense as to what the design matrix looks like, we can use `model_matrix`.
+
+```{r design}
+model_matrix(heights, afqt ~ sex + marital_comb)
+```
+
+To add the interaction between the two variables (multiplicative effects), we can add one additional term to the `lm` function call.
+
+```{r interact_sex_marital}
+interact_mod <- lm(afqt ~ sex + marital_comb + sex:marital_comb, data = heights)
+summary(interact_mod)
+```
+
+There is also an `anova` function that gives more traditional anova and sum of squares information.
+
+```{r anova_table}
+anova(interact_mod)
+```
+
+
+In this model, there are not actually any significant results for the interaction, but lets explore the design matrix to see exactly what is happening.
+
+```{r design_interact}
+model_matrix(heights, afqt ~ sex + marital_comb + sex:marital_comb)
+```
+
+This model specifically adds columns that literally are multiplications of other columns in the design matrix. This is why interactions are often depicted with the symbol "x", e.g. marital x sex. R uses `:` as interactions. The interaction model can also be specified in an alternate more compact formula:
+
+```{r compact_interact}
+summary(lm(afqt ~ sex * marital_comb, data = heights))
+```
+
+#### Exercises
+1. Using the gss_cat data from the forcats package, fit a model that predicts age with marital status, partyid, and the interaction between the two.
+2. How well does this model fit? 
+3. How is the intercept interpreted here?
+4. Do the results change when collapsing the partyid variable into the following three categories:
+    - Republican
+    - Democrat
+    - Other
+    
+## Visualize Model Results
+When exploring model results, visualizing the model results is often more useful than looking at a table of coefficients. In addition, if the model is simply attempting to predict means (ANOVA), plotting often simply involves computing means for the different categories. This section will also explore how best to visualize interactions.
+
+If we simply would like to show the main effects from the model above predicting Armed Forces Qualifiactions Test Score with marital status and sex, we could calculate the means of these groups.
+
+```{r group_means}
+marital_means <- heights %>%
+  group_by(marital_comb) %>%
+  summarise(avg_afqt = mean(afqt, na.rm = TRUE),
+            sd_afqt = sd(afqt, na.rm = TRUE), 
+            n = n()) %>%
+  mutate(se_mean = sd_afqt/sqrt(n), 
+         group = 'Marital', 
+         levels = marital_comb) %>%
+  ungroup() %>%
+  dplyr::select(-marital_comb)
+sex_means <- heights %>%
+  group_by(sex) %>%
+  summarise(avg_afqt = mean(afqt, na.rm = TRUE),
+            sd_afqt = sd(afqt, na.rm = TRUE), 
+            n = n()) %>%
+  mutate(se_mean = sd_afqt/sqrt(n),
+         group = 'Sex', 
+         levels = sex) %>%
+  ungroup() %>%
+  dplyr::select(-sex)
+comb_means <- bind_rows(marital_means, sex_means)
+comb_means
+```
+
+The effects can now be shown in a figure.
+
+```{r mean_fig}
+ggplot(comb_means, aes(avg_afqt, fct_reorder(levels, avg_afqt))) + 
+  geom_point(size = 3) + 
+  facet_grid(group ~ ., scales = 'free', space = 'free') + 
+  ylab("Groups") + 
+  xlab("Average Armed Forces Qualification Score") + 
+  theme_bw()
+```
+
+Since we computed standard errors, we could also add error bars using `geom_errorbarh`.
+
+```{r pointrange}
+ggplot(comb_means, aes(avg_afqt, fct_reorder(levels, avg_afqt))) + 
+  geom_point(size = 3) + 
+  geom_errorbarh(aes(xmin = avg_afqt - se_mean*2, xmax = avg_afqt + se_mean*2),
+                 height = 0) + 
+  facet_grid(group ~ ., scales = 'free', space = 'free') +
+  ylab("Groups") + 
+  xlab("Average Armed Forces Qualification Score") + 
+  theme_bw()
+```
+
+Plotting the interaction happens in a similar fashion. Namely, we will now calculate means by using both variables in a single `group_by` statement.
+
+```{r}
+int_means <- heights %>%
+  group_by(marital_comb, sex) %>%
+  summarise(avg_afqt = mean(afqt, na.rm = TRUE),
+            sd_afqt = sd(afqt, na.rm = TRUE), 
+            n = n()) %>%
+  mutate(se_mean = sd_afqt/sqrt(n))
+int_means
+```
+
+These means should now match the last model from the previous lecture. We can now plot these directly.
+
+```{r int_plot}
+ggplot(int_means, aes(avg_afqt, fct_reorder(marital_comb, avg_afqt), 
+                      shape = sex, linetype = sex, group = sex)) + 
+  geom_point(size = 3) + 
+  geom_line(size = 1) + 
+  ylab("Groups") + 
+  xlab("Average Armed Forces Qualification Score") + 
+  theme_bw()
+```
+
+Standard error bars can be shown here, but may complicate the figure too much.
+
+```{r se_int}
+ggplot(int_means, aes(avg_afqt, fct_reorder(marital_comb, avg_afqt), 
+                      shape = sex, linetype = sex, group = sex)) + 
+  geom_point(size = 3) + 
+  geom_line(size = 1) + 
+  geom_errorbarh(aes(xmin = avg_afqt - se_mean * 2, xmax = avg_afqt + se_mean * 2), 
+                 height = 0) +
+  ylab("Groups") + 
+  xlab("Average Armed Forces Qualification Score") + 
+  theme_bw()
+```
+
+#### Exercises
+1. Using the gss_cat data from the forcats package, fit a model that predicts age with marital status, partyid, and the interaction between the two.
+2. Create a figure that explores the interaction between the two variables. 
+3. Add a third variable to the model, race. Include this as a main effect, plus interacting with the other variables. 
+
+## Interaction between continuous and categorical predictors
+Using again the heights data, suppose we wished to again predict the Armed Forces Qualifications Test score (afqt) with marital status and height. This can be done with the linear model.
+
+```{r additive}
+summary(lm(afqt ~ marital_comb + height, data = heights))
+```
+
+You'll notice here that the intercept is negative. Why is this negative? You can most easily see this by looking at a figure of the data. Note, here I am simply showing the dependent and the height variable ignoring the marital status, however, this will have a slightly different slope than the one above (Try it).
+
+```{r trend}
+ggplot(heights, aes(x = height, y = afqt)) + 
+  geom_jitter(size = 2) + 
+  geom_abline(intercept = -26.02, slope = 1.002, size = 1, color = 'blue') + 
+  coord_cartesian(xlim = c(0, 90), ylim = c(-30, 105)) +
+  ylab("Average Armed Forces Qualification Score") + 
+  xlab("Height") +
+  theme_bw()
+```
+
+It may be better to mean center the height variable. 
+
+```{r mean_center}
+summary(lm(afqt ~ marital_comb + I(height - mean(heights$height)), data = heights))
+```
+
+Notice that the mean effects do not change, but rather just the location of the intercept. This is a traditional analysis of covariance model.
+
+Interactions are simple to add now, they follow the same syntax as the categorical predictors from above. For example, if we wanted to add an interaction between height and marital status, we could do this as follows.
+
+```{r int_cont}
+summary(lm(afqt ~ marital_comb + I(height - mean(heights$height)) + 
+             marital_comb:I(height - mean(heights$height)), 
+           data = heights))
+```
+
+or
+
+```{r int_cont2}
+summary(lm(afqt ~ marital_comb * I(height - mean(heights$height)), data = heights))
+```
+
+What do these coefficients mean however? This is best explained with a picture.
+
+```{r augment}
+model_summary <- augment(lm(afqt ~ marital_comb * I(height - mean(heights$height)), 
+                            data = heights))
+model_summary
+
+ggplot(model_summary, aes(I.height...mean.heights.height.., afqt)) + 
+  geom_jitter(alpha = .1) + 
+  geom_line(aes(x = I.height...mean.heights.height.., y = .fitted, color = marital_comb),
+            size = 2) + 
+  ylab("Average Armed Forces Qualification Score") + 
+  xlab("Height") +
+  theme_bw()
+```
+
+The figure for the traditional ANCOVA model initially explored would look like:
+
+```{r ancova_figure}
+model_summary <- augment(lm(afqt ~ marital_comb + I(height - mean(heights$height)), 
+                            data = heights))
+model_summary
+
+ggplot(model_summary, aes(I.height...mean.heights.height.., afqt)) + 
+  geom_jitter(alpha = .1) + 
+  geom_line(aes(x = I.height...mean.heights.height.., y = .fitted, color = marital_comb),
+            size = 2) + 
+  ylab("Average Armed Forces Qualification Score") + 
+  xlab("Height") +
+  theme_bw()
+```
+
+#### Exercises
+1. Using the gss_cat data from the forcats package, fit a model that predicts age with marital status, tvhours, and the interaction between the two.
+2. Interpret the parameter estimates from this model? Is there evidence that the interaction is adding to the model?
+3. Create a figure that explores the interaction between the two variables. 
+4. Fit another model that predicts age with marital status, party affiliation, and tvhours (main effects) as well as the interaction between marital status and tvhours and party afilliation and tvhours (two second order interactions).
+5. Interpret the effects for this model.

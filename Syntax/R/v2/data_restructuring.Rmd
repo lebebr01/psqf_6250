@@ -1,0 +1,92 @@
+---
+title:  "Data Restructuring"
+author: "Brandon LeBeau"
+date:   "February 13, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_knit$set(root.dir = "C:/Users/bleb/OneDrive - University of Iowa/Courses/Uiowa/Comp")
+```
+
+Data restructuring is often a useful tool to have. By data restructuring, I mean transforming data from long to wide format or vice versa. For the most part, long format is much easier to use when plotting and computing summary statistics. A related topic, called tidy data, can be read about in more detail here: <http://www.jstatsoft.org/v59/i10/paper>.
+
+The data we are going to use for this section of notes is called "LongitudinalEx.csv" and can be found on ICON. The packages needed for this section and loading the data file, assuming it is found in the "Data" folder and the working directory is set to the root of the project, are as follows:
+
+```{r data}
+library(tidyverse)
+long_data <- read_csv("Data/LongitudinalEx.csv")
+```
+
+## Long/Stacked Data
+The data read in above is in a format that is commonly referred to as long or stacked data. 
+
+```{r print_data}
+long_data
+```
+
+These data do not have one individual per row, instead each row is a individual by wave combination and are stacked for each individual (notice the three rows for id = 4). The variables in this case each have there own column in the data and all of them are time varying (change for each wave of data within an individual). This is also an example of "tidy data" from the paper linked to above, where each row is a unique observation (id, wave pair), variables are in the columns, and each cell of the data is a value.
+
+## Extra Long Data
+To progress through data restructuring, we first need to transform this data is extra long format. This format is not entirely useful by itself, however it will help use show the use of a few functions from the `tidyr` package. To go to extra long data, we will make use of the `gather` and `unite` functions. 
+
+```{r extra_long}
+extra_long <- long_data %>%
+  gather(variable, value, agegrp:age.c) %>%
+  unite(var_wave, variable, wave)
+extra_long 
+```
+
+You'll notice now that there are only three columns in the data and that there are now `r nrow(extra_long)` rows in data. This extra long data format gathered all of the variables into two columns, one that identify the variable and wave and the other that simply lists the value.
+
+## Wide Data
+We can now take the extra long data and turn this into wide data. Wide data is characterized by one row per individual with columns representing the variable and wave combinations.
+
+```{r wide_data}
+wide <- extra_long %>% 
+  spread(var_wave, value)
+wide
+```
+
+You'll notice from the data above, there are now only `r nrow(wide)` rows, but now `r ncol(wide)` columns in the data. Each variable except for id now also has a number appended to it to represent the wave of the data.
+
+This data structure is common, particularly for users of SPSS or Excel for data entry or processing. Unfortunately, when working with data in R (and in general), data in wide format is often difficult to work with. Therefore it is common to need to restructure the data from wide to long format.
+
+## Back to Long Format
+Fortunatly, we can use the same functions as we used above, but now in inverse to get from wide to long format.
+
+```{r back_to_long}
+wide %>% 
+  gather(variable, value, -id) %>%
+  separate(variable, into = c('variable', 'wave'), 
+           sep = "_") %>%
+  arrange(id, wave) %>%
+  spread(variable, value)
+```
+
+This now is identical to the first data that we had. I would recommend working through the steps above to see what the data structure looks like in each intermediate step along the way. In addition, it is often not of interest to save the extra long data format, below is the code that would go directly from long to wide.
+
+```{r long_to_wide}
+long_data %>%
+  gather(variable, value, agegrp:age.c) %>%
+  unite(var_wave, variable, wave) %>%
+  spread(var_wave, value)
+```
+
+### Exercises
+1. Using the following data generation code, convert these data to long format.
+```{r data_exercise, eval = FALSE}
+set.seed(10)
+messy <- data.frame(
+  id = 1:4,
+  trt = sample(rep(c('control', 'treatment'), each = 2)),
+  work.T1 = runif(4),
+  home.T1 = runif(4),
+  work.T2 = runif(4),
+  home.T2 = runif(4)
+)
+```
+2. Once successfully converted to long format, convert back to wide format.
+

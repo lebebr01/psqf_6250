@@ -1,0 +1,231 @@
+---
+title:  "Working with Character Strings"
+author: "Brandon LeBeau"
+date:   "February 13, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_knit$set(root.dir = "C:/Users/bleb/OneDrive - University of Iowa/Courses/Uiowa/Comp")
+```
+
+An often useful task is to manipulate character string variables. This usually comes in the form of regular expressions. Regular expressions come as a part of the base R, however, the regular expressions found in the `stringr` package are a bit more consistent in their naming structure, so we will use them (they are simply wrappers around the base R regular expressions).
+
+The following packages will be used in this section of notes.
+
+```{r library, message = FALSE}
+library(tidyverse)
+# install.packages("stringr")
+library(stringr)
+```
+
+## Basic String Tasks
+This section will discuss three basic string functions that help with simple string manipulations. These functions include: `str_length`, `str_c`, and `str_sub`.
+
+### `str_length`
+The `str_length` function can be used to calculate the length of the string. For example:
+
+```{r str_length}
+string <- c('Iowa City', 'Cedar Rapids', 'Des Moines', 'IA')
+str_length(string)
+```
+
+### `str_c`
+The `str_c` function allows you to combine strings together in different ways. One way to think about this is to think about pasting strings together. For example:
+
+```{r str_c}
+str_c('Iowa City', 'Cedar Rapids', 'Des Moines', 'IA')
+```
+
+Perhaps more useful:
+```{r str_c2}
+str_c(c('Iowa City', 'Cedar Rapids', 'Des Moines'), 'IA')
+```
+
+More useful yet:
+```{r str_c_sep}
+str_c(c('Iowa City', 'Cedar Rapids', 'Des Moines'), 'IA', sep = ', ')
+```
+
+You can also collapse multiple vectors of strings into a single string using the collapse argument.
+```{r collapse}
+str_c(c('Iowa City', 'Cedar Rapids', 'Des Moines'), collapse = ', ')
+```
+
+### `str_sub`
+The `str_sub` function is useful for subsetting strings by location. For example:
+```{r str_sub}
+str_sub(c('Iowa City', 'Cedar Rapids', 'Des Moines'), 1, 4)
+```
+
+You can use negative numbers to start from the end:
+```{r str_sub_neg}
+str_sub(c('Iowa City', 'Cedar Rapids', 'Des Moines'), -6, -1)
+```
+
+## Regular Expressions
+Regular expressions are complicated and take awhile to master. This introduction is just going to cover the surface to get you started. To see the basics of regular expressions, we are going to use the `str_view` function to view text matches.
+
+The most basic regular expression is simply to match literal text. For example:
+
+```{r literal_match}
+x <- c('Iowa City', 'Cedar Rapids', 'Des Moines')
+str_view(x, 'City')
+```
+
+Note that generally, regular expressions are case sensitive.
+```{r case_sensitive}
+str_view(x, 'city')
+```
+
+If you want the expression to ignore case, use the `ignore_case` argument in tandem with `regex`.
+```{r case_ignore}
+str_view(x, regex('city', ignore_case = TRUE))
+```
+
+Two other useful regular expression tools are anchoring and repeating patterns. First, anchor refers to whether the match should occur anywhere (the default), match at the beginning of the string, or match at the end of the string. To match at the start of the string:
+
+```{r match_start}
+x <- c('Iowa City', 'Des Moines, Iowa')
+str_view(x, '^Iowa')
+```
+
+
+Or to match at the end of a string:
+```{r match_end}
+str_view(x, 'Iowa$')
+```
+
+There are three operators that are useful for matching repetitious strings. 
+
+- `?` 0 or 1 match
+- `+` 1 or more
+- `*` 0 or more
+
+Examples of these are given below:
+
+```{r repetition}
+sounds <- c('baaaa', 'ssss', 'moo', 'buzz', 'purr')
+str_view(sounds, 'a?')
+str_view(sounds, 'a+')
+str_view(sounds, 'rrr*')
+str_view(sounds, 'rrr+')
+```
+
+There are additional repetition operators using braces, `{}` that can be useful.
+
+- `{n}` match exactly n
+- `{n, }` match n or more
+- `{, m}` match at most m
+- `{n, m}` match between n and m
+
+#### Exercises
+1. Using the `str_view` function and the sounds object created above, rewrite this regular expression using braces: `str_view(sounds, 'rrr*')`.
+2. Explore the `str_trim` function. What does this do? Test this function on the following string: `string <- "\n\nString with trailing and leading white space\n\n"`
+
+
+## Regular Expression Functions
+So far we have just visualized the regular expression match. This is useful for testing, however, commonly we would like to create a new variable based on information processed from text strings. The tools we will explore are: `str_detect`, `str_count`, `str_extract`, `str_replace`, and `str_split`. 
+
+Suppose we have the following string:
+```{r }
+x <- c('Iowa City, Iowa', 'Cedar Rapids, IA', 'Des Moines, Iowa', 'Waterloo, IA', 'Rochester, Minnesota')
+x
+```
+
+Supose we were interested in knowing which cities are from Iowa in this text string, the `str_detect` function is useful for this.
+```{r str_detect}
+str_detect(x, 'Iowa$')
+```
+
+This didn't return all the correct matches due to formatting differences. There are two options to fix this. First, we could search for two strings:
+```{r str_detect2}
+str_detect(x, 'Iowa$|IA$')
+```
+
+We could then calculate the proportion of cities in the string directly:
+```{r prop_city}
+mean(str_detect(x, 'Iowa$|IA$'))
+```
+
+Another useful related function to `str_detect` is `str_count` which instead of TRUE/FALSE, will tell you how many matches are in each string.
+```{r str_count}
+str_count(x, 'Iowa$|IA$')
+```
+
+There are instances where you will need to be careful with this function as it will calculate number of matches.
+```{r str_count_diff}
+str_count(x, 'Iowa|IA')
+```
+
+### Replace Text
+Above we solved the different formatting differences by searching for two text strings. This can be useful for a few different strings, however, for more complex searches, it can be useful to standardize the text to be the same across variables. This is the job for `str_replace`.
+
+```{r str_replace}
+str_replace(x, 'Iowa$', 'IA')
+```
+
+This function takes two arguments, first the text to be matched and second the text the match should be changed to. If there are no matches the text is not changed. You need to be careful with this function too:
+
+```{r str_replace_error}
+str_replace(x, 'Iowa', 'IA')
+```
+
+By default, the function will only replace the first match. If you'd like to replace all matches you need to use the `str_replace_all` function.
+```{r str_replace_all}
+str_replace_all(x, 'Iowa', 'IA')
+```
+
+This operation is not useful here, but there are many places that this is a useful operation.
+
+### Extract Text
+If you wished to extract text instead of replacing text, `str_extract` is useful for this. For example, if we wished to extract the Minnesota:
+
+```{r str_extract}
+str_extract(x, 'Minnesota')
+```
+
+You can build more complicated expressions using the `str_extract` function. For example, suppose we wished to extract only the city name.
+```{r str_extract_complicated}
+str_extract(x, '^.*,')
+```
+
+This included the comma as well which may not be desired, we will show another way to achieve the same operation with the `str_split` function. One quick note about the above operation, I used a `.`. The `.` means to match any character (except a new line character). To match a literal `.`, you would need to escape this with `\\.`.
+
+### Split on Delimiter
+If you'd like to split a string based on a common delimiter, using the `str_split` function is useful. For example, if we wished to split the city from the state:
+```{r str_split}
+str_split(x, ', ')
+```
+
+The `str_split` function will remove the delimiter that it used to split on. The function also allows you to simplify the structure:
+```{r str_split_simplify}
+str_split(x, ', ', simplify = TRUE)
+```
+
+Now a matrix is returned.
+
+## Real World Example
+To give a sense of some real world applications of regular expressions, I'm going to use the "ufo.csv" data we used once previously.
+```{r data}
+ufo <- read_csv('Data/ufo.csv')
+ufo
+```
+
+A few things may be of interest here. First, we may wish to add columns that split the Duration variable into a time and metric variables.
+
+```{r split_duration}
+ufo_duration <- str_split(ufo$Duration, ' ', simplify = TRUE)
+cbind(ufo, ufo_duration)
+```
+
+It could also be useful to count the number of times colors were mentioned in the summary text.
+```{r num_colors_summary}
+ufo %>%
+  mutate(
+    num_colors = str_count(Summary, 'white|green|red|blue|orange|purple|yellow')
+  )
+```
+

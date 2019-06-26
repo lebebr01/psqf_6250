@@ -1,0 +1,164 @@
+---
+title:  "Data Import"
+author: "Brandon LeBeau"
+date:   "February 13, 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_knit$set(root.dir = "C:/Users/bleb/OneDrive - University of Iowa/Courses/Uiowa/Comp")
+```
+
+
+So far we have solely used data that is already found within R by way of packages. Obviously, we will want to use our own data and this involves importing data directly into R. We are going to focus on two types of data structures to read in, text files and excel files.
+
+The following two packages will be used in this section.
+
+```{r packages, message = FALSE}
+library(tidyverse)
+# install.packages("readxl")
+library(readxl)
+```
+
+
+## Text Files
+Through the use of the `readr` package, we are going to read in flat text files. In many cases, these text files are saved as csv files. The csv stands for comma separated values files meaning that columns in the data are separated by columns. As a side note, this is the most common way that I save data and read in data. The nice aspect of csv files is that if needed, they can be opened in programs like Excel for viewing, but are still just text files which are simple and lightweight. 
+
+To read in a csv file, we are going to use the `read_csv` function from the `readr` package. We are going to read in some UFO data (the data can be found on ICON). 
+
+A special note here, first, I am going to assume throughout that you are using RStudio projects and that the data file is in a folder called "Data". If this is not the case, the path for the files listed below will not work. Using the `getwd` function can help debug issues. See the lectures on R projects or <http://r4ds.had.co.nz/workflow-projects.html> for additional information.
+
+```{r ufo_read}
+ufo <- read_csv("Data/ufo.csv")
+```
+
+Note again, similar to dplyr, when saving the data to an object, it will not be printed. We can now view the first 10 rows by typing the object name.
+
+```{r ufo_data}
+ufo
+```
+
+By default, the `read_csv` function uses the first row of the data file as the names of the variables. To override this behavior, set `col_names = FALSE` or better yet, specify the names with the `col_names` argument. In addition, if the file has header metadata, rows of the data can be skipped with the `skip` argument. For example, reading in the same data as above, but skipping the first row and specifying the names manually would look as follows:
+
+```{r ufo_manual_names}
+read_csv("Data/ufo.csv", skip = 1, col_names = c('Date/Time', 'City', 'State', 
+                                                 'Shape', 'Duration', 'Summary',
+                                                 'Posted'))
+```
+
+
+### Manually Specifying Column Types
+You may have noticed above that we just needed to give the `read_csv` function the path to the data file, we did not need to tell the function the types of columns. Instead, the function guessed the type from the first 1000 rows. This can be useful for interactive work, but for truly reproducible code, it is best to specify these manually. There are two ways to specify the column types, one is verbose and the other is simpler, but both use the argument `col_types`. 
+
+First the verbose solution:
+
+```{r col_types_verbose}
+read_csv("Data/ufo.csv", 
+         col_types = c(
+           'Date/Time' = col_character(),
+           City = col_character(),
+           State = col_character(),
+           Shape = col_character(),
+           Duration = col_character(),
+           Summary = col_character(),
+           Posted = col_character()
+         ))
+```
+
+As all variables are being read in as characters, there is a simple shortcut to use.
+
+```{r col_types_simple}
+read_csv("Data/ufo.csv", 
+         col_types = c('ccccccc'))
+```
+
+
+To show the reason the more verbose is useful, suppose we wished to convert the 'Data/Time' variable to the correct type, a date time variable. 
+
+```{r data_time, error = TRUE}
+read_csv("Data/ufo.csv", 
+         col_types = c(
+           'Date / Time' = col_datetime(),
+           City = col_character(),
+           State = col_character(),
+           Shape = col_character(),
+           Duration = col_character(),
+           Summary = col_character(),
+           Posted = col_character()
+         ))
+```
+
+Here we get an error, which is caused by the fact that the date time variable specification needs a format statement. We can directly specify this.
+
+```{r date_time2}
+ufo_date <- read_csv("Data/ufo.csv", 
+         col_types = list(
+           'Date / Time' = col_datetime(format = "%m/%d/%y %H:%M"),
+           City = col_character(),
+           State = col_character(),
+           Shape = col_character(),
+           Duration = col_character(),
+           Summary = col_character(),
+           Posted = col_character()
+         ))
+ufo_date
+```
+
+Notice even though I was careful in the column specification, there was still issues when parsing this column as a date/time column. The data is still returned, but there are issues. These issues can be viewed using the `problems` function.
+
+```{r problems}
+problems(ufo_date)
+```
+
+### Other Text Formats
+There are other text formats used to read in data. They are listed below with the function used to read in that type. Note, that the function calls are identical to those specified above.
+
+- tsv - tab separated files - `read_tsv`
+- fixed width files - `read_fwf`
+- white space generally - `read_table`
+- delimiter generally - `read_delim`
+
+#### Exercises
+1. There is a tsv file posted on icon called "lotr_clean.tsv". Download this and read this data file into R. 
+2. Instead of specifying the path, use the function `file.choose()`. For example, `read_tsv(file.choose())`. What does this function use? Would you recommend this to be used in a reproducible document?
+3. Run the `getwd()` function from the R console. What does this function return?
+
+## Excel Files
+Although I commonly use text files (e.g. csv) files, reality is that many people still use Excel for storing of data files. There are good and bad aspects of this, but reading in Excel files may be needed. The `readxl` package is useful for this task. 
+
+Suppose we wished to read in the Excel file found on the US Census Bureau website related to Education: <https://www.census.gov/support/USACdataDownloads.html>
+
+To do this, we can do this directly with the `read_excel` function with the data already downloaded and posted on ICON.
+
+```{r educ_census}
+read_excel('Data/EDU01.xls')
+```
+
+By default, the function will read in the first sheet and will treat the first row as the column names. If you wish to read in another sheet, you can use the `sheet` argument. For example:
+
+```{r sheet2}
+read_excel('Data/EDU01.xls', sheet = 2)
+read_excel('Data/EDU01.xls', sheet = 'EDU01B')
+```
+
+If there is metadata or no column names, these can be added in the same fashion as discussed above with the `read_csv` function.
+
+## Writing Files
+Most of the `read_*` functions also come with functions that allow you to write out files as well. I'm only going to cover the `write_csv` function, however, there are others that may be of use. Similarly to reading in files, the functionality is the same across the `write_*` functions. 
+
+Suppose we created a new column with the `ufo` data and wished to save this data to a csv file, this can be accomplished with the following series of commands.
+
+```{r write, eval = FALSE}
+ufo_count <- ufo %>%
+  group_by(State) %>%
+  mutate(num_state = n())
+write_csv(ufo_count, path = 'path/to/save/file.csv')
+```
+
+Notice there are two arguments to the `write_csv` function, the first argument is the object you wish to save. The second is the path to the location to save the object. You must specify `path = ` otherwise the `write_csv` function will look for that object in the R session.
+
+## Other Data Formats
+There are still other data formats, particularly from proprietary statistical software such as Stata, SAS, or SPSS. To read these files in the `haven` function would be useful. I leave this as an exercise for you if you have these types of files to read into R.
+
