@@ -1,0 +1,117 @@
+---
+title:  "Introduction to Markdown, R Markdown, and knitr"
+author: "Brandon LeBeau"
+date:   "January 17, 2017"
+output: html_document
+---
+
+Text is written in Markdown. This is a simple markup language that takes care of formatting and allows for quick easy formatting.
+
+# Sample Title
+To create a new paragraph, just include a blank line.
+
+**Bold** or *italics* can be done easily. Also can use __bold__ or _italics_. Code can be shown in monospace with backticks `code example`.
+
+## Level 2 Header
+Lists are easy:  
+
+- Unordered
+- List   
+    * Nested version list
+    + Idea 2
+- Third
+
+### Ordered Lists
+Use numbers to create ordered list:  
+
+1. first
+1. second
+3. third
+7. fourth
+
+## Create Links
+Links are easy, two different versions.   
+[Markdown Syntax](http://daringfireball.net/projects/markdown)   
+<http://daringfireball.net/projects/markdown>
+
+## Images are similar
+![alt text](DomeWdUnit-W-L.gif "UI Logo")
+
+# Tables
+Tables are also simple.
+
+| Column 1 | Column 2 |
+|----------|----------|
+| Text     | Text     | 
+| Text     | Text     | 
+
+
+# Block Quotes
+Block quotes:
+
+ > This is an example of a block quote
+ > that is wrapped. The text will be indented
+ > as a block quote automatically.
+ 
+# Line Break  
+A line break can be made with three or more dashed or asterisks
+
+----------------------------------
+
+
+# Dynamic Documents
+Using markdown, R code can be directly embedded into the document.
+```{r chunk1}
+x <- rnorm(100)
+y <- runif(100, min = 3, max = 8)
+mean(x)
+mean(y)
+```
+
+
+## Showing additional code options
+#### Do not show syntax
+```{r chunk2, echo = FALSE}
+x <- rnorm(100)
+y <- runif(100, min = 3, max = 8)
+mean(x)
+mean(y)
+```
+
+##### Do not print results
+```{r chunk3, results = "hide"}
+x <- rnorm(100)
+y <- runif(100, min = 0, max = 1)
+mean(x)
+mean(y)
+```
+
+#### Automatically include figures
+```{r fig, fig.width = 8, fig.height = 6}
+x <- rnorm(100)
+y <- runif(100, min = 3, max = 8)
+plot(x, y)
+```
+
+The `knitr` website has additional chunk options <http://yihui.name/knitr/options/>. You can even set global options by doing something like the following:
+
+```{r global_opts, eval = FALSE}
+knitr::opts_chunk$set(fig.width = 8, fig.height = 6, echo = FALSE,
+                      warning = FALSE, message = FALSE)
+```
+
+## Inline code
+`knitr` also has the ability to run code inline. Therefore, if we wanted to report the correlation between `x` and `y` reported above, we can do that. 
+
+For example, the correlation between student test scores (x) and the student grade (y) is
+`r round(cor(x, y), 3)`.
+
+
+## Compile document
+The easiest way to compile the document is to use the "Knit" button in Rstudio. This button will directly compile the document into an html file based on the specification of the `output` option at the top of this file. Changing the `output` options can produce a pdf (`output: pdf_document`) or a word file (`output: word_document`).
+
+Another option is to compile the `.Rmd` file with knitr, then use [pandoc](http://pandoc.org/) to convert it to another option via the command line. You could also use the `rmarkdown` package in R which will include both the `knitr` package and the `pandoc` program. More information can be found here: <http://kbroman.org/knitr_knutshell/pages/Rmarkdown.html>
+
+
+
+
